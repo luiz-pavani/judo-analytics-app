@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
-import { Download, Trash2, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle, Link, Upload, Film, Youtube, MousePointerClick, Rewind } from 'lucide-react';
+import { Download, Trash2, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle, Link, Upload, Film, Youtube, MousePointerClick, Rewind, Gauge } from 'lucide-react';
 
 // --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
@@ -33,6 +33,7 @@ export default function JudoPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1); // VELOCIDADE
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
 
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
@@ -60,6 +61,7 @@ export default function JudoPlayer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Atalho Teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !modalAberto) {
@@ -185,6 +187,19 @@ export default function JudoPlayer() {
     setCurrentTime(seekTime);
   };
 
+  const mudarVelocidade = () => {
+    const rates = [0.25, 0.5, 1.0, 1.5, 2.0];
+    const nextIdx = (rates.indexOf(playbackRate) + 1) % rates.length;
+    const nextRate = rates[nextIdx];
+    setPlaybackRate(nextRate);
+    
+    if (videoMode === 'YOUTUBE' && youtubePlayerRef.current) {
+      youtubePlayerRef.current.setPlaybackRate(nextRate);
+    } else if (videoMode === 'FILE' && filePlayerRef.current) {
+      filePlayerRef.current.playbackRate = nextRate;
+    }
+  };
+
   const formatTime = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Video ID;Tempo Video (s);Tempo Luta (Relativo);Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
@@ -201,15 +216,11 @@ export default function JudoPlayer() {
     return '#555';
   };
   const handleFileSelect = (e: any) => { const f = e.target.files[0]; if(f) { setFileUrl(URL.createObjectURL(f)); setFileName(f.name); setVideoMode('FILE'); }};
-  
-  // --- FUNÇÃO ATUALIZADA DE LINK DO YOUTUBE ---
   const mudarParaYoutube = () => { 
     const link = prompt("Cole o Link Completo do YouTube:", ""); 
     if(link) { 
-      // Extrai ID de url longa (v=) ou curta (youtu.be/)
       const id = link.includes('v=') ? link.split('v=')[1].split('&')[0] : link.split('/').pop() || link;
-      setYoutubeId(id); 
-      setVideoMode('YOUTUBE'); 
+      setYoutubeId(id); setVideoMode('YOUTUBE'); 
     }
   };
 
@@ -220,7 +231,7 @@ export default function JudoPlayer() {
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'24px', fontWeight: '900', letterSpacing: '-1px', display: 'flex', alignItems: 'baseline' }}>
           <span style={{ color: '#ef4444' }}>SMAART</span><span style={{ color: '#666', margin: '0 5px' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.2</span>
+          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.3</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background:'#222', borderRadius:'6px', padding:'2px', border:'1px solid #444'}}>
@@ -321,12 +332,21 @@ export default function JudoPlayer() {
         {/* CONTROLES */}
         <div style={{ flex: '1 1 300px', minWidth: '300px', width: '100%' }}>
           
-          <button 
-            onClick={iniciarRegistroRapido}
-            style={{width:'100%', padding:'30px', background:'linear-gradient(to right, #2563eb, #3b82f6)', color:'white', border:'none', borderRadius:'12px', fontSize:'20px', fontWeight:'900', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'15px', boxShadow:'0 10px 20px rgba(37, 99, 235, 0.3)', marginBottom:'20px'}}
-          >
-            <MousePointerClick size={32}/> MARCAR AÇÃO
-          </button>
+          <div style={{display:'flex', gap:'5px', marginBottom:'15px'}}>
+            <button 
+              onClick={iniciarRegistroRapido}
+              style={{flex: 1, padding:'20px', background:'linear-gradient(to right, #2563eb, #3b82f6)', color:'white', border:'none', borderRadius:'12px', fontSize:'20px', fontWeight:'900', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', boxShadow:'0 10px 20px rgba(37, 99, 235, 0.3)'}}
+            >
+              <MousePointerClick size={28}/> MARCAR
+            </button>
+            <button 
+              onClick={mudarVelocidade}
+              style={{width:'60px', background:'#333', color:'#ccc', border:'1px solid #555', borderRadius:'12px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'bold'}}
+            >
+              <Gauge size={18}/>
+              {playbackRate}x
+            </button>
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
             <button onClick={() => registrarFluxo('HAJIME')} style={{background: '#15803d', color:'white', border:'none', padding:'15px', fontWeight:'bold', borderRadius:'8px', display:'flex', gap:'5px', justifyContent:'center', alignItems:'center'}}><PlayCircle size={18}/> HAJIME</button>
