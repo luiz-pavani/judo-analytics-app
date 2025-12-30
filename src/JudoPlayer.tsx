@@ -30,10 +30,8 @@ const DB_GOLPES: Record<string, string> = {
   "Hane-goshi-gaeshi": "ASHI-WAZA", "Harai-goshi-gaeshi": "ASHI-WAZA", "Uchi-mata-gaeshi": "ASHI-WAZA",
 
   // 4. SUTEMI-WAZA (Sacrifício - 21)
-  // Ma-sutemi
   "Tomoe-nage": "SUTEMI-WAZA", "Sumi-gaeshi": "SUTEMI-WAZA", "Hikikomi-gaeshi": "SUTEMI-WAZA",
   "Tawara-gaeshi": "SUTEMI-WAZA", "Ura-nage": "SUTEMI-WAZA",
-  // Yoko-sutemi
   "Yoko-otoshi": "SUTEMI-WAZA", "Tani-otoshi": "SUTEMI-WAZA", "Hane-makikomi": "SUTEMI-WAZA",
   "Soto-makikomi": "SUTEMI-WAZA", "Uchi-makikomi": "SUTEMI-WAZA", "Uki-waza": "SUTEMI-WAZA",
   "Yoko-wakare": "SUTEMI-WAZA", "Yoko-guruma": "SUTEMI-WAZA", "Yoko-gake": "SUTEMI-WAZA",
@@ -42,7 +40,6 @@ const DB_GOLPES: Record<string, string> = {
   "Kawazu-gake": "SUTEMI-WAZA",
 
   // --- KATAME-WAZA (32 Técnicas) ---
-
   // 5. OSAEKOMI-WAZA (Imobilização - 10)
   "Kesa-gatame": "OSAEKOMI-WAZA", "Kuzure-kesa-gatame": "OSAEKOMI-WAZA", "Ushiro-kesa-gatame": "OSAEKOMI-WAZA",
   "Kata-gatame": "OSAEKOMI-WAZA", "Kami-shiho-gatame": "OSAEKOMI-WAZA", "Kuzure-kami-shiho-gatame": "OSAEKOMI-WAZA",
@@ -91,7 +88,7 @@ export default function JudoPlayer() {
   const [sugestoes, setSugestoes] = useState<string[]>([]);
 
   const [eventos, setEventos] = useState(() => {
-    const salvos = localStorage.getItem('jaap_dados_v4'); // v4 para limpar cache antigo
+    const salvos = localStorage.getItem('jaap_dados_v4'); 
     return salvos ? JSON.parse(salvos) : [];
   });
 
@@ -105,9 +102,8 @@ export default function JudoPlayer() {
       const matches = Object.keys(DB_GOLPES).filter(k => 
         k.toLowerCase().includes(nomeGolpe.toLowerCase())
       );
-      setSugestoes(matches.slice(0, 6)); // Top 6 sugestões
+      setSugestoes(matches.slice(0, 6)); 
 
-      // Auto-selecionar grupo se match exato
       const matchExato = matches.find(k => k.toLowerCase() === nomeGolpe.toLowerCase());
       if (matchExato) {
         setGrupoSelecionado(DB_GOLPES[matchExato]);
@@ -197,23 +193,25 @@ export default function JudoPlayer() {
   });
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', paddingBottom: '100px' }}>
+    // AQUI ESTÁ A MUDANÇA: MaxWidth aumentado para 1600px e width 95%
+    <div style={{ maxWidth: '1600px', width: '95%', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', paddingBottom: '100px' }}>
       
       {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <div style={{fontSize: '14px', color: '#666'}}>JAAP PRO <span style={{color: '#ef4444'}}>v1.3 (Kodokan 100)</span></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{fontSize: '16px', color: '#999', fontWeight: 'bold'}}>JAAP PRO <span style={{color: '#ef4444'}}>v1.3</span></div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={limparDados} style={{ padding: '8px 15px', background: '#374151', color: '#9ca3af', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', display: 'flex', gap: '5px' }}><Trash2 size={16}/> Limpar</button>
-          <button onClick={baixarCSV} style={{ padding: '8px 15px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', gap: '5px' }}><Download size={16}/> CSV</button>
+          <button onClick={limparDados} style={{ padding: '8px 20px', background: '#374151', color: '#9ca3af', border: '1px solid #4b5563', borderRadius: '6px', cursor: 'pointer', display: 'flex', gap: '5px', alignItems: 'center' }}><Trash2 size={16}/> Limpar</button>
+          <button onClick={baixarCSV} style={{ padding: '8px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', gap: '5px', alignItems: 'center', fontWeight: 'bold' }}><Download size={16}/> Exportar CSV</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '25px', alignItems: 'start' }}>
+      {/* GRID EXPANDIDO: Mais espaço entre as colunas (gap: 30px) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px', alignItems: 'start' }}>
         
         {/* ESQUERDA: VÍDEO + COCKPIT */}
         <div>
-          <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
-            <YouTube videoId="Jz6nuq5RBUA" onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '450px', playerVars: { controls: 0, rel: 0 } }} />
+          <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            <YouTube videoId="Jz6nuq5RBUA" onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '500px', playerVars: { controls: 0, rel: 0 } }} />
           </div>
 
           <div style={{ position: 'relative', height: '30px', background: '#1f2937', marginTop: '10px', borderRadius: '4px', cursor: 'pointer', overflow: 'hidden' }}>
@@ -224,52 +222,54 @@ export default function JudoPlayer() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #333' }}>
-             <button onClick={togglePlay} style={{ fontWeight: 'bold', cursor: 'pointer', background: isPlaying ? '#ef4444' : '#22c55e', color: 'white', border: 'none', padding: '10px 30px', borderRadius: '6px' }}>{isPlaying ? "PAUSAR" : "COMBATER"}</button>
-             <span style={{ fontSize: '24px', fontFamily: 'monospace', color: '#fbbf24' }}>{currentTime.toFixed(2)}s</span>
+             <button onClick={togglePlay} style={{ fontWeight: 'bold', cursor: 'pointer', background: isPlaying ? '#ef4444' : '#22c55e', color: 'white', border: 'none', padding: '12px 40px', borderRadius: '6px', fontSize: '16px' }}>{isPlaying ? "PAUSAR (Mate)" : "COMBATER (Hajime)"}</button>
+             <span style={{ fontSize: '28px', fontFamily: 'monospace', color: '#fbbf24' }}>{currentTime.toFixed(2)}s</span>
           </div>
 
           {/* PAINEL DE CONTEXTO */}
-          <div style={{ marginTop: '25px', padding: '20px', background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333' }}>
+          <div style={{ marginTop: '25px', padding: '25px', background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
             
-            {/* ATLETA */}
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>QUEM ATACOU?</div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => setAtletaAtual('BRANCO')} style={contextBtnStyle(atletaAtual === 'BRANCO', '#9ca3af')}>🥋 BRANCO</button>
-                <button onClick={() => setAtletaAtual('AZUL')} style={contextBtnStyle(atletaAtual === 'AZUL', '#2563eb')}>🥋 AZUL</button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              {/* ATLETA */}
+              <div>
+                <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>QUEM ATACOU?</div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => setAtletaAtual('BRANCO')} style={contextBtnStyle(atletaAtual === 'BRANCO', '#9ca3af')}>🥋 BRANCO</button>
+                  <button onClick={() => setAtletaAtual('AZUL')} style={contextBtnStyle(atletaAtual === 'AZUL', '#2563eb')}>🥋 AZUL</button>
+                </div>
+              </div>
+
+              {/* LATERALIDADE */}
+              <div>
+                <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>QUAL LADO?</div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => setLadoAtual('ESQUERDA')} style={contextBtnStyle(ladoAtual === 'ESQUERDA', '#f59e0b')}><ArrowLeftRight size={18} /> ESQUERDA</button>
+                  <button onClick={() => setLadoAtual('DIREITA')} style={contextBtnStyle(ladoAtual === 'DIREITA', '#10b981')}>DIREITA <ArrowLeftRight size={18} /></button>
+                </div>
               </div>
             </div>
 
-            {/* LATERALIDADE */}
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>QUAL LADO?</div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => setLadoAtual('ESQUERDA')} style={contextBtnStyle(ladoAtual === 'ESQUERDA', '#f59e0b')}><ArrowLeftRight size={18} /> ESQUERDA</button>
-                <button onClick={() => setLadoAtual('DIREITA')} style={contextBtnStyle(ladoAtual === 'DIREITA', '#10b981')}>DIREITA <ArrowLeftRight size={18} /></button>
-              </div>
-            </div>
-
-            {/* AUTO-COMPLETE TÉCNICO (100 GOLPES) */}
-            <div style={{ marginBottom: '20px', position: 'relative' }}>
-               <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>TÉCNICA (Nage-waza ou Ne-waza)</div>
+            {/* AUTO-COMPLETE */}
+            <div style={{ marginBottom: '25px', position: 'relative' }}>
+               <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>TÉCNICA (Nage-waza ou Ne-waza)</div>
                <div style={{display: 'flex', gap: '10px'}}>
                  <div style={{flex: 2, position: 'relative'}}>
-                   <div style={{position: 'absolute', top: '15px', left: '12px', color: '#666'}}><Search size={18}/></div>
+                   <div style={{position: 'absolute', top: '16px', left: '15px', color: '#666'}}><Search size={20}/></div>
                    <input 
                      type="text" 
                      placeholder="Digite o golpe (Ex: Juji...)" 
                      value={nomeGolpe}
                      onChange={(e) => setNomeGolpe(e.target.value)}
-                     style={{ width: '100%', padding: '15px 15px 15px 40px', background: '#000', border: '1px solid #444', color: 'white', borderRadius: '6px', fontSize: '16px' }}
+                     style={{ width: '100%', padding: '16px 16px 16px 45px', background: '#000', border: '1px solid #444', color: 'white', borderRadius: '8px', fontSize: '18px' }}
                    />
                    {/* Sugestões */}
                    {sugestoes.length > 0 && (
                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#2d3748', border: '1px solid #4a5568', borderRadius: '0 0 6px 6px', zIndex: 50, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 10px 15px rgba(0,0,0,0.5)' }}>
                        {sugestoes.map(sug => (
                          <div key={sug} onClick={() => selecionarSugestao(sug)} 
-                              style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #4a5568', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                           <span>{sug}</span>
-                           <span style={{ fontSize: '9px', fontWeight: 'bold', background: CORES_GRUPOS[DB_GOLPES[sug]], padding: '3px 6px', borderRadius: '4px', color: 'white' }}>{DB_GOLPES[sug]}</span>
+                              style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #4a5568', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                           <span style={{fontSize: '16px'}}>{sug}</span>
+                           <span style={{ fontSize: '10px', fontWeight: 'bold', background: CORES_GRUPOS[DB_GOLPES[sug]], padding: '4px 8px', borderRadius: '4px', color: 'white' }}>{DB_GOLPES[sug]}</span>
                          </div>
                        ))}
                      </div>
@@ -278,7 +278,7 @@ export default function JudoPlayer() {
                  {/* Select Grupo */}
                  <div style={{flex: 1}}>
                     <select value={grupoSelecionado} onChange={(e) => setGrupoSelecionado(e.target.value)}
-                      style={{ width: '100%', height: '100%', background: CORES_GRUPOS[grupoSelecionado], color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', padding: '0 10px', cursor: 'pointer' }}
+                      style={{ width: '100%', height: '100%', background: CORES_GRUPOS[grupoSelecionado], color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', padding: '0 15px', cursor: 'pointer', fontSize: '14px' }}
                     >
                       {GRUPOS.map(g => <option key={g} value={g} style={{background: '#333'}}>{g}</option>)}
                     </select>
@@ -289,55 +289,57 @@ export default function JudoPlayer() {
             {/* BOTÃO REGISTRAR */}
             <button 
               onClick={registrarAcao}
-              style={{ width: '100%', padding: '20px', background: 'linear-gradient(to right, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 4px 6px rgba(37, 99, 235, 0.3)' }}
+              style={{ width: '100%', padding: '20px', background: 'linear-gradient(to right, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.4)', transition: 'transform 0.1s' }}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              <CheckCircle size={24} /> REGISTRAR AÇÃO
+              <CheckCircle size={28} /> REGISTRAR AÇÃO
             </button>
 
           </div>
         </div>
 
         {/* DIREITA: LOG E GRÁFICO */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
           
-          <div style={{ background: '#1f2937', padding: '15px', borderRadius: '12px', border: '1px solid #374151' }}>
-            <h3 style={{ textAlign: 'center', margin: '0 0 5px 0', fontSize: '14px', color: '#fff' }}>Perfil Tático: {atletaAtual}</h3>
-            <div style={{ height: '220px' }}>
+          <div style={{ background: '#1f2937', padding: '20px', borderRadius: '12px', border: '1px solid #374151' }}>
+            <h3 style={{ textAlign: 'center', margin: '0 0 10px 0', fontSize: '16px', color: '#fff', fontWeight: 'bold' }}>Perfil Tático: <span style={{color: atletaAtual === 'AZUL' ? '#3b82f6' : 'white'}}>{atletaAtual}</span></h3>
+            <div style={{ height: '250px' }}>
               {dadosGrafico.length > 0 ? (
                 <ResponsiveContainer>
                   <PieChart>
-                    <Pie data={dadosGrafico} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value">
+                    <Pie data={dadosGrafico} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
                       {dadosGrafico.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={CORES_GRUPOS[entry.name]} />)}
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
-                    <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{fontSize: '10px'}} />
+                    <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{fontSize: '11px'}} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555'}}>Sem dados</div>}
+              ) : <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontStyle: 'italic'}}>Sem dados registrados</div>}
             </div>
           </div>
 
-          <div style={{ background: '#111', borderRadius: '12px', border: '1px solid #333', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '15px', borderBottom: '1px solid #333', fontWeight: 'bold', fontSize: '14px', color: '#ccc' }}>REGISTROS ({eventos.length})</div>
-            <div style={{ padding: '10px', overflowY: 'auto', maxHeight: '500px' }}>
+          <div style={{ background: '#111', borderRadius: '12px', border: '1px solid #333', flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '600px' }}>
+            <div style={{ padding: '15px', borderBottom: '1px solid #333', fontWeight: 'bold', fontSize: '14px', color: '#ccc', letterSpacing: '1px' }}>REGISTROS DA LUTA ({eventos.length})</div>
+            <div style={{ padding: '10px', overflowY: 'auto' }}>
               {eventos.map((ev: any) => (
                 <div key={ev.id} 
                      style={{ 
-                       padding: '12px', marginBottom: '8px', borderRadius: '6px', 
-                       background: '#1f2937', borderLeft: `4px solid ${ev.atleta === 'AZUL' ? '#2563eb' : '#fff'}`,
+                       padding: '12px', marginBottom: '8px', borderRadius: '8px', 
+                       background: '#1f2937', borderLeft: `5px solid ${ev.atleta === 'AZUL' ? '#2563eb' : '#fff'}`,
                        display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'center'
                      }}>
                   
                   <div onClick={() => irParaGolpe(ev.tempo)} style={{ cursor: 'pointer' }}>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', alignItems: 'center' }}>
-                      <span style={{ color: '#fbbf24', fontFamily: 'monospace', fontWeight: 'bold' }}>{ev.tempo.toFixed(2)}s</span>
-                      <span style={{ fontSize: '10px', background: '#374151', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>{ev.lado}</span>
+                      <span style={{ color: '#fbbf24', fontFamily: 'monospace', fontWeight: 'bold', fontSize: '14px' }}>{ev.tempo.toFixed(2)}s</span>
+                      <span style={{ fontSize: '10px', background: '#374151', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>{ev.lado}</span>
                     </div>
-                    <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{ev.especifico}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'white' }}>{ev.especifico}</div>
                     <div style={{ fontSize: '11px', color: ev.cor, textTransform: 'uppercase', marginTop: '2px', fontWeight: 'bold' }}>{ev.grupo}</div>
                   </div>
 
-                  <button onClick={() => deletarEvento(ev.id)} style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', padding: '5px' }} title="Apagar"><X size={18} className="hover:text-red-500 transition-colors" /></button>
+                  <button onClick={() => deletarEvento(ev.id)} style={{ background: '#333', border: 'none', color: '#888', cursor: 'pointer', padding: '8px', borderRadius: '4px' }} title="Apagar"><X size={16} className="hover:text-red-500 transition-colors" /></button>
 
                 </div>
               ))}
