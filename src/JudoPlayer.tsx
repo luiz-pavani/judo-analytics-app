@@ -33,7 +33,7 @@ export default function JudoPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1); // VELOCIDADE
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
 
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
@@ -61,7 +61,6 @@ export default function JudoPlayer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Atalho Teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !modalAberto) {
@@ -201,6 +200,7 @@ export default function JudoPlayer() {
   };
 
   const formatTime = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
+  
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Video ID;Tempo Video (s);Tempo Luta (Relativo);Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
     eventos.forEach((ev: any) => {
@@ -209,13 +209,16 @@ export default function JudoPlayer() {
     });
     const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_sessao.csv`; link.click();
   };
+  
   const getCorBorda = (ev: any) => {
     if (ev.categoria === 'FLUXO') return '#555';
     if (ev.atleta === 'AZUL') return '#2563eb'; 
     if (ev.atleta === 'BRANCO') return '#ffffff'; 
     return '#555';
   };
+  
   const handleFileSelect = (e: any) => { const f = e.target.files[0]; if(f) { setFileUrl(URL.createObjectURL(f)); setFileName(f.name); setVideoMode('FILE'); }};
+  
   const mudarParaYoutube = () => { 
     const link = prompt("Cole o Link Completo do YouTube:", ""); 
     if(link) { 
@@ -231,7 +234,7 @@ export default function JudoPlayer() {
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'24px', fontWeight: '900', letterSpacing: '-1px', display: 'flex', alignItems: 'baseline' }}>
           <span style={{ color: '#ef4444' }}>SMAART</span><span style={{ color: '#666', margin: '0 5px' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.3</span>
+          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.4</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background:'#222', borderRadius:'6px', padding:'2px', border:'1px solid #444'}}>
@@ -243,18 +246,16 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* --- SUPER MODAL DE REGISTRO --- */}
+      {/* MODAL */}
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
           <div style={{ background: '#1e1e1e', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '500px', border: '1px solid #444', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
-            
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
               <h2 style={{margin:0, color:'#fbbf24', fontSize:'22px', display:'flex', alignItems:'center', gap:'10px'}}>
                 <MousePointerClick /> REGISTRAR AÇÃO
               </h2>
               <button onClick={cancelarRegistro} style={{background:'none', border:'none', color:'#666', cursor:'pointer'}}><X size={24}/></button>
             </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
               <div>
                 <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>QUEM?</div>
@@ -271,25 +272,16 @@ export default function JudoPlayer() {
                 </div>
               </div>
             </div>
-
             <div style={{marginBottom:'25px', position:'relative'}}>
               <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>O QUÊ?</div>
               <div style={{position:'relative'}}>
                 <Search size={18} style={{position:'absolute', top:'12px', left:'12px', color:'#666'}}/>
-                <input 
-                  ref={inputRef}
-                  type="text" 
-                  placeholder="Comece a digitar (ex: seoi...)" 
-                  value={modalNome} 
-                  onChange={e=>setModalNome(e.target.value)} 
-                  style={{width:'100%', padding:'12px 12px 12px 40px', background:'#000', border:'1px solid #555', color:'white', borderRadius:'8px', fontSize:'18px', boxSizing:'border-box'}}
-                />
+                <input ref={inputRef} type="text" placeholder="Comece a digitar..." value={modalNome} onChange={e=>setModalNome(e.target.value)} style={{width:'100%', padding:'12px 12px 12px 40px', background:'#000', border:'1px solid #555', color:'white', borderRadius:'8px', fontSize:'18px', boxSizing:'border-box'}}/>
               </div>
               {sugestoes.length > 0 && (
                 <div style={{position:'absolute', top:'100%', width:'100%', background:'#2d2d2d', zIndex:100, border:'1px solid #444', borderRadius:'0 0 8px 8px', maxHeight:'150px', overflowY:'auto'}}>
                   {sugestoes.map(s=>(
-                    <div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} 
-                         style={{padding:'12px', borderBottom:'1px solid #444', cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
+                    <div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'12px', borderBottom:'1px solid #444', cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
                       <span>{s}</span>
                       <span style={{fontSize:'10px', background:'#444', padding:'2px 6px', borderRadius:'4px'}}>{DB_GOLPES[Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase())||'']}</span>
                     </div>
@@ -297,7 +289,6 @@ export default function JudoPlayer() {
                 </div>
               )}
             </div>
-
             <div>
               <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>RESULTADO (SALVAR & PLAY)</div>
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
@@ -307,7 +298,6 @@ export default function JudoPlayer() {
                 <button onClick={() => confirmarEContinuar('IPPON')} style={{padding: '15px', background: '#fff', color: '#000', border: '4px solid #ef4444', borderRadius: '8px', fontWeight: 'bold', fontSize:'18px'}}>IPPON</button>
               </div>
             </div>
-
           </div>
         </div>
       )}
@@ -315,17 +305,26 @@ export default function JudoPlayer() {
       {/* ÁREA PRINCIPAL */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
         
-        {/* VÍDEO */}
+        {/* VÍDEO (CORREÇÃO DE ASPECT RATIO) */}
         <div style={{ flex: '2 1 400px', minWidth: '300px', width: '100%' }}>
-          <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000', marginBottom: '15px', position: 'relative', paddingTop: '56.25%' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+          <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000', marginBottom: '15px', position: 'relative', paddingTop: '56.25%', width: '100%' }}>
                {videoMode === 'YOUTUBE' ? (
-                 <YouTube videoId={youtubeId} onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }} />
+                 <YouTube 
+                   videoId={youtubeId} 
+                   onReady={onReady} 
+                   onStateChange={onStateChange} 
+                   // AQUI ESTÁ A MÁGICA: Forçar o iframe a preencher o container relativo
+                   style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                   opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }} 
+                 />
                ) : (
-                 fileUrl ? <video ref={filePlayerRef} src={fileUrl} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/> 
-                 : <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#666'}}>Carregue um vídeo</div>
+                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                   {fileUrl ? 
+                     <video ref={filePlayerRef} src={fileUrl} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/> 
+                     : <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#666'}}>Carregue um vídeo</div>
+                   }
+                 </div>
                )}
-            </div>
           </div>
         </div>
 
