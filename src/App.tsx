@@ -3,18 +3,9 @@ import JudoPlayer from './JudoPlayer';
 
 export default function App() {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#111', padding: '20px', color: 'white' }}>
-      
-      <header style={{ borderBottom: '1px solid #333', paddingBottom: '20px', marginBottom: '30px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          🥋 <span style={{ color: '#ef4444' }}>SMAART|PRO<small style={{ fontSize: '12px', color: '#666' }}>v1.0</small>
-        </h1>
-      </header>
-
-      <main>
-        <JudoPlayer />
-      </main>
-
+    // Removemos o cabeçalho antigo e tiramos o padding extra
+    <div style={{ minHeight: '100vh', backgroundColor: '#111', margin: 0, padding: 0 }}>
+      <JudoPlayer />
     </div>
   );
 }
