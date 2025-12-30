@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
-import { Download, Trash2, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle, Link, Upload, Film, Youtube, MousePointerClick } from 'lucide-react';
+import { Download, Trash2, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle, Link, Upload, Film, Youtube, MousePointerClick, Rewind } from 'lucide-react';
 
 // --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
@@ -23,7 +23,7 @@ export default function JudoPlayer() {
   const youtubePlayerRef = useRef<any>(null);
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
-  const inputRef = useRef<any>(null); // Foco no input do modal
+  const inputRef = useRef<any>(null);
 
   const [videoMode, setVideoMode] = useState<'YOUTUBE' | 'FILE'>('YOUTUBE');
   const [youtubeId, setYoutubeId] = useState('Jz6nuq5RBUA');
@@ -35,16 +35,17 @@ export default function JudoPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
 
-  // Estados INTERNOS do Modal (Fluxo Reverso)
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
   const [modalGrupo, setModalGrupo] = useState('TE-WAZA');
   const [sugestoes, setSugestoes] = useState<string[]>([]);
   
+  const [atletaAtual, setAtletaAtual] = useState('BRANCO'); 
+  const [ladoAtual, setLadoAtual] = useState('DIREITA');   
   const [motivoShido, setMotivoShido] = useState(DB_SHIDOS[0]);
   const [modalAberto, setModalAberto] = useState(false);
-  const [tempoCapturado, setTempoCapturado] = useState(0); // O momento exato do clique
+  const [tempoCapturado, setTempoCapturado] = useState(0);
 
   const [eventos, setEventos] = useState(() => {
     const salvos = localStorage.getItem('smaartpro_db_v5');
@@ -53,18 +54,16 @@ export default function JudoPlayer() {
 
   useEffect(() => { localStorage.setItem('smaartpro_db_v5', JSON.stringify(eventos)); }, [eventos]);
 
-  // Listener de Resize
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 800);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // --- ATALHO DE TECLADO (ESPAÇO = MARCAR) ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !modalAberto) {
-        e.preventDefault(); // Evita scroll da tela
+        e.preventDefault();
         iniciarRegistroRapido();
       }
     };
@@ -72,57 +71,36 @@ export default function JudoPlayer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [modalAberto, isPlaying, videoMode]);
 
-  // --- FLUXO REVERSO: GATILHO INICIAL ---
   const iniciarRegistroRapido = () => {
-    // 1. Pausa o vídeo
     if (videoMode === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.pauseVideo();
     else if (videoMode === 'FILE' && filePlayerRef.current) filePlayerRef.current.pause();
     
-    // 2. Captura o tempo exato
     let tempoExato = currentTime;
     if (videoMode === 'YOUTUBE' && youtubePlayerRef.current?.getCurrentTime) tempoExato = youtubePlayerRef.current.getCurrentTime();
     else if (videoMode === 'FILE' && filePlayerRef.current) tempoExato = filePlayerRef.current.currentTime;
     
     setTempoCapturado(tempoExato);
     setModalAberto(true);
-    setModalNome(''); // Limpa o nome para nova entrada
-    
-    // Foco automático no input (após renderizar modal)
+    setModalNome('');
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  // --- FINALIZAÇÃO DO REGISTRO ---
   const confirmarEContinuar = (resultado: string) => {
     const novoEvento = {
-      id: Date.now(),
-      videoId: videoMode === 'YOUTUBE' ? youtubeId : fileName,
-      tempo: tempoCapturado,
-      categoria: 'TECNICA',
-      grupo: modalGrupo,
-      especifico: modalNome || "Técnica Geral",
-      atleta: modalAtleta,
-      lado: modalLado,
-      corTecnica: CORES_GRUPOS[modalGrupo],
-      resultado: resultado
+      id: Date.now(), videoId: videoMode === 'YOUTUBE' ? youtubeId : fileName,
+      tempo: tempoCapturado, categoria: 'TECNICA', grupo: modalGrupo,
+      especifico: modalNome || "Técnica Geral", atleta: modalAtleta, lado: modalLado,
+      corTecnica: CORES_GRUPOS[modalGrupo], resultado: resultado
     };
-
     setEventos([novoEvento, ...eventos]);
-    
-    // Fecha e dá Play
     setModalAberto(false);
     if (videoMode === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.playVideo();
     else if (videoMode === 'FILE' && filePlayerRef.current) filePlayerRef.current.play();
   };
 
-  const cancelarRegistro = () => {
-    setModalAberto(false);
-    // Opcional: Dar play ao cancelar? Geralmente sim.
-    // if (videoMode === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.playVideo();
-  };
+  const cancelarRegistro = () => { setModalAberto(false); };
 
-  // --- OUTROS REGISTROS (Fluxo, Punição) ---
   const registrarFluxo = (tipo: string) => {
-    // Registra tempo atual sem pausar (ou pausando se for Mate)
     const t = videoMode==='YOUTUBE' ? youtubePlayerRef.current?.getCurrentTime() || currentTime : filePlayerRef.current?.currentTime || currentTime;
     setEventos([{ id: Date.now(), videoId: videoMode==='YOUTUBE'?youtubeId:fileName, tempo: t, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: '#555' }, ...eventos]);
   };
@@ -132,7 +110,6 @@ export default function JudoPlayer() {
     setEventos([{ id: Date.now(), videoId: videoMode==='YOUTUBE'?youtubeId:fileName, tempo: t, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: '#fbbf24' }, ...eventos]);
   };
 
-  // --- LÓGICA DE VÍDEO ---
   useEffect(() => {
     let af: number;
     const loop = () => {
@@ -146,7 +123,6 @@ export default function JudoPlayer() {
     return () => cancelAnimationFrame(af);
   }, [isPlaying, videoMode]);
 
-  // --- AUTO-COMPLETE NO MODAL ---
   useEffect(() => {
     if (modalNome.length > 1) {
       const matches = Object.keys(DB_GOLPES).filter(k => k.toLowerCase().includes(modalNome.toLowerCase()));
@@ -156,7 +132,6 @@ export default function JudoPlayer() {
     } else setSugestoes([]);
   }, [modalNome]);
 
-  // --- CÁLCULOS (Placar/Tempo) ---
   const placar = useMemo(() => {
     const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
     const currentVideoId = videoMode === 'YOUTUBE' ? youtubeId : fileName;
@@ -194,14 +169,22 @@ export default function JudoPlayer() {
     return { total: tempoTotal, isGS: isGoldenScore };
   }, [eventos, currentTime, videoMode, youtubeId, fileName]);
 
-  // --- BOILERPLATE ---
   const onReady = (e: any) => { youtubePlayerRef.current = e.target; setDuration(e.target.getDuration()); };
   const onStateChange = (e: any) => setIsPlaying(e.data === 1);
+  
   const irPara = (t: number) => { 
-    if (videoMode === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(t, true);
-    else if (videoMode === 'FILE' && filePlayerRef.current) filePlayerRef.current.currentTime = t;
-    setCurrentTime(t);
+    const seekTime = Math.max(0, t - 2); 
+    if (videoMode === 'YOUTUBE' && youtubePlayerRef.current) {
+      youtubePlayerRef.current.seekTo(seekTime, true);
+      youtubePlayerRef.current.playVideo(); 
+    }
+    else if (videoMode === 'FILE' && filePlayerRef.current) {
+      filePlayerRef.current.currentTime = seekTime;
+      filePlayerRef.current.play(); 
+    }
+    setCurrentTime(seekTime);
   };
+
   const formatTime = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Video ID;Tempo Video (s);Tempo Luta (Relativo);Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
@@ -218,7 +201,17 @@ export default function JudoPlayer() {
     return '#555';
   };
   const handleFileSelect = (e: any) => { const f = e.target.files[0]; if(f) { setFileUrl(URL.createObjectURL(f)); setFileName(f.name); setVideoMode('FILE'); }};
-  const mudarParaYoutube = () => { const id = prompt("ID:", youtubeId); if(id) { setYoutubeId(id.includes('v=')?id.split('v=')[1].split('&')[0]:id.split('/').pop()||id); setVideoMode('YOUTUBE'); }};
+  
+  // --- FUNÇÃO ATUALIZADA DE LINK DO YOUTUBE ---
+  const mudarParaYoutube = () => { 
+    const link = prompt("Cole o Link Completo do YouTube:", ""); 
+    if(link) { 
+      // Extrai ID de url longa (v=) ou curta (youtu.be/)
+      const id = link.includes('v=') ? link.split('v=')[1].split('&')[0] : link.split('/').pop() || link;
+      setYoutubeId(id); 
+      setVideoMode('YOUTUBE'); 
+    }
+  };
 
   return (
     <div style={{ maxWidth: '100%', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', padding: '10px', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -227,7 +220,7 @@ export default function JudoPlayer() {
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'24px', fontWeight: '900', letterSpacing: '-1px', display: 'flex', alignItems: 'baseline' }}>
           <span style={{ color: '#ef4444' }}>SMAART</span><span style={{ color: '#666', margin: '0 5px' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.0</span>
+          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.2</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background:'#222', borderRadius:'6px', padding:'2px', border:'1px solid #444'}}>
@@ -239,7 +232,7 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* --- SUPER MODAL DE REGISTRO (CENTRO DA TELA) --- */}
+      {/* --- SUPER MODAL DE REGISTRO --- */}
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
           <div style={{ background: '#1e1e1e', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '500px', border: '1px solid #444', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
@@ -251,7 +244,6 @@ export default function JudoPlayer() {
               <button onClick={cancelarRegistro} style={{background:'none', border:'none', color:'#666', cursor:'pointer'}}><X size={24}/></button>
             </div>
 
-            {/* 1. SELEÇÃO DE ATLETA E LADO */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
               <div>
                 <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>QUEM?</div>
@@ -269,7 +261,6 @@ export default function JudoPlayer() {
               </div>
             </div>
 
-            {/* 2. NOME DA TÉCNICA (AUTO FOCUS) */}
             <div style={{marginBottom:'25px', position:'relative'}}>
               <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>O QUÊ?</div>
               <div style={{position:'relative'}}>
@@ -283,7 +274,6 @@ export default function JudoPlayer() {
                   style={{width:'100%', padding:'12px 12px 12px 40px', background:'#000', border:'1px solid #555', color:'white', borderRadius:'8px', fontSize:'18px', boxSizing:'border-box'}}
                 />
               </div>
-              {/* Sugestões */}
               {sugestoes.length > 0 && (
                 <div style={{position:'absolute', top:'100%', width:'100%', background:'#2d2d2d', zIndex:100, border:'1px solid #444', borderRadius:'0 0 8px 8px', maxHeight:'150px', overflowY:'auto'}}>
                   {sugestoes.map(s=>(
@@ -297,7 +287,6 @@ export default function JudoPlayer() {
               )}
             </div>
 
-            {/* 3. RESULTADO E CONFIRMAÇÃO */}
             <div>
               <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>RESULTADO (SALVAR & PLAY)</div>
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
@@ -312,7 +301,7 @@ export default function JudoPlayer() {
         </div>
       )}
 
-      {/* ÁREA PRINCIPAL: VÍDEO + BOTÃO GIGANTE DE MARCAR */}
+      {/* ÁREA PRINCIPAL */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
         
         {/* VÍDEO */}
@@ -329,10 +318,9 @@ export default function JudoPlayer() {
           </div>
         </div>
 
-        {/* CONTROLES LATERAIS */}
+        {/* CONTROLES */}
         <div style={{ flex: '1 1 300px', minWidth: '300px', width: '100%' }}>
           
-          {/* BOTÃO GIGANTE DE MARCAR */}
           <button 
             onClick={iniciarRegistroRapido}
             style={{width:'100%', padding:'30px', background:'linear-gradient(to right, #2563eb, #3b82f6)', color:'white', border:'none', borderRadius:'12px', fontSize:'20px', fontWeight:'900', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'15px', boxShadow:'0 10px 20px rgba(37, 99, 235, 0.3)', marginBottom:'20px'}}
@@ -340,7 +328,6 @@ export default function JudoPlayer() {
             <MousePointerClick size={32}/> MARCAR AÇÃO
           </button>
 
-          {/* FLUXO DA LUTA */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
             <button onClick={() => registrarFluxo('HAJIME')} style={{background: '#15803d', color:'white', border:'none', padding:'15px', fontWeight:'bold', borderRadius:'8px', display:'flex', gap:'5px', justifyContent:'center', alignItems:'center'}}><PlayCircle size={18}/> HAJIME</button>
             <button onClick={() => registrarFluxo('MATE')} style={{background: '#b91c1c', color:'white', border:'none', padding:'15px', fontWeight:'bold', borderRadius:'8px', display:'flex', gap:'5px', justifyContent:'center', alignItems:'center'}}><PauseCircle size={18}/> MATE</button>
@@ -348,7 +335,6 @@ export default function JudoPlayer() {
             <button onClick={() => registrarFluxo('SOREMADE')} style={{background: '#333', color:'white', border:'none', padding:'10px', fontWeight:'bold', borderRadius:'8px', fontSize:'12px'}}>SOREMADE</button>
           </div>
 
-          {/* PUNIÇÕES */}
           <div style={{ background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', padding: '15px' }}>
              <h3 style={{margin:'0 0 10px 0', fontSize:'12px', color:'#aaa'}}>PUNIÇÕES (SHIDO)</h3>
              <div style={{display:'flex', gap:'5px'}}>
@@ -363,7 +349,6 @@ export default function JudoPlayer() {
 
       {/* PLACAR */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px', marginBottom: '15px', background: '#000', padding: '15px', borderRadius: '12px', border: '1px solid #333', marginTop: '20px' }}>
-        {/* BRANCO */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: '1px solid #333' }}>
           <div style={{fontSize: '16px', fontWeight: 'bold'}}>⚪ BRANCO</div>
           <div style={{display: 'flex', gap: '15px', marginTop: '5px'}}>
@@ -373,12 +358,10 @@ export default function JudoPlayer() {
              <div style={{textAlign:'center'}}><div style={{fontSize:'10px', color:'#ef4444'}}>S</div><div style={{fontSize:'28px', color: '#ef4444'}}>{placar.branco.shido}</div></div>
           </div>
         </div>
-        {/* TEMPO */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{fontSize: '10px', color: tempoDeLuta.isGS ? '#fbbf24' : '#aaa', fontWeight: 'bold'}}>{tempoDeLuta.isGS ? "GOLDEN SCORE" : "TEMPO DE LUTA"}</div>
           <div style={{fontSize: '48px', fontFamily: 'monospace', fontWeight: 'bold', color: tempoDeLuta.isGS ? '#fbbf24' : 'white', lineHeight: '1'}}>{formatTime(tempoDeLuta.total)}</div>
         </div>
-        {/* AZUL */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '1px solid #333' }}>
           <div style={{fontSize: '16px', fontWeight: 'bold', color: '#3b82f6'}}>🔵 AZUL</div>
           <div style={{display: 'flex', gap: '15px', marginTop: '5px'}}>
@@ -405,7 +388,7 @@ export default function JudoPlayer() {
             }}>
               <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
                 <div style={{display:'flex', gap:'10px', fontSize:'11px', color:'#888', alignItems:'center'}}>
-                  <span style={{color:'#999', fontFamily:'monospace'}}>Video: {formatTime(ev.tempo)}</span>
+                  <span style={{color:'#999', fontFamily:'monospace', display:'flex', alignItems:'center', gap:'3px'}}><Rewind size={10}/> {formatTime(ev.tempo)}</span>
                   <span style={{color:'#fbbf24', fontFamily:'monospace', fontWeight:'bold', background:'#333', padding:'1px 4px', borderRadius:'3px'}}>
                     Luta: {ev.tempo >= fightStartTime ? formatTime(ev.tempo - fightStartTime) : '-'}
                   </span>
