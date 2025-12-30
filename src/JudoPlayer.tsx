@@ -22,9 +22,16 @@ export default function JudoPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 800);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
-  // --- GERENCIAMENTO DE VÍDEO (SESSÃO) ---
-  const [videoId, setVideoId] = useState('Jz6nuq5RBUA'); // ID inicial
+  // SESSÃO
+  const [videoId, setVideoId] = useState('Jz6nuq5RBUA'); 
   const [inputVideoId, setInputVideoId] = useState('Jz6nuq5RBUA');
 
   // Contexto
@@ -45,10 +52,9 @@ export default function JudoPlayer() {
 
   useEffect(() => { localStorage.setItem('smaartpro_db_v3', JSON.stringify(eventos)); }, [eventos]);
 
-  // Placar (Calculado com base apenas nos eventos do VÍDEO ATUAL para exibição, mas CSV exporta tudo)
+  // Placar (Apenas vídeo atual)
   const placar = useMemo(() => {
     const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
-    // Filtramos apenas eventos do vídeo atual para o placar da tela
     const eventosDoVideo = eventos.filter((ev:any) => ev.videoId === videoId);
     
     eventosDoVideo.forEach((ev: any) => {
@@ -62,11 +68,10 @@ export default function JudoPlayer() {
       }
     });
     return p;
-  }, [eventos, videoId]); // Recalcula se mudar eventos ou videoId
+  }, [eventos, videoId]);
 
   const tempoDeLuta = useMemo(() => {
     let tempoTotal = 0; let ultimoHajime = null; let isGoldenScore = false;
-    // Filtramos apenas eventos do vídeo atual
     const eventosDoVideo = eventos.filter((ev:any) => ev.videoId === videoId).sort((a:any, b:any) => a.tempo - b.tempo);
     
     for (const ev of eventosDoVideo) {
@@ -82,7 +87,7 @@ export default function JudoPlayer() {
     return { total: tempoTotal, isGS: isGoldenScore };
   }, [eventos, currentTime, videoId]);
 
-  // Ações de Registro (Agora salva o VIDEO ID)
+  // Ações
   const iniciarRegistroTecnica = () => {
     const dadosPreliminares = {
       id: Date.now(), videoId: videoId, tempo: currentTime, categoria: 'TECNICA',
@@ -132,19 +137,22 @@ export default function JudoPlayer() {
   const onStateChange = (e: any) => setIsPlaying(e.data === 1);
   const irPara = (t: number) => { playerRef.current.seekTo(t, true); playerRef.current.playVideo(); };
   const formatTime = (s: number) => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
-  
-  const trocarVideo = () => {
-    if (inputVideoId !== videoId) {
-      setVideoId(inputVideoId);
-      // Não limpamos eventos, permitindo acumular sessão
-    }
-  };
+  const trocarVideo = () => { if (inputVideoId !== videoId) setVideoId(inputVideoId); };
 
+  // --- CORREÇÃO DO CSV: USAR PONTO E VÍRGULA (;) ---
   const baixarCSV = () => {
-    let csv = "data:text/csv;charset=utf-8,Video ID,Tempo (s),Categoria,Técnica,Resultado,Atleta,Lado,Detalhe\n";
-    // Exporta TODOS os eventos da sessão, não só do vídeo atual
-    eventos.forEach((ev: any) => csv += `${ev.videoId},${ev.tempo.toFixed(3).replace('.', ',')},${ev.categoria},${ev.especifico || ev.tipo || '-'},${ev.resultado || '-'},${ev.atleta},${ev.lado},${ev.grupo || ev.tipo}\n`);
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_sessao_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    // Cabeçalho com ;
+    let csv = "data:text/csv;charset=utf-8,Video ID;Tempo (s);Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
+    
+    eventos.forEach((ev: any) => {
+      // Linhas com ;
+      csv += `${ev.videoId};${ev.tempo.toFixed(3).replace('.', ',')};${ev.categoria};${ev.especifico || ev.tipo || '-'};${ev.resultado || '-'};${ev.atleta};${ev.lado};${ev.grupo || ev.tipo}\n`;
+    });
+    
+    const link = document.createElement("a"); 
+    link.href = encodeURI(csv); 
+    link.download = `smaartpro_sessao_${new Date().toISOString().slice(0,10)}.csv`; 
+    link.click();
   };
 
   const getCorBorda = (ev: any) => {
@@ -157,13 +165,13 @@ export default function JudoPlayer() {
   return (
     <div style={{ maxWidth: '100%', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', padding: '10px', boxSizing: 'border-box', overflowX: 'hidden' }}>
       
-      {/* HEADER + CONTROLE DE VÍDEO */}
+      {/* HEADER + VIDEO ID */}
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '-1px', display: 'flex', alignItems: 'baseline' }}>
+        <h1 style={{ margin: 0, fontSize: isMobile?'22px':'24px', fontWeight: '900', letterSpacing: '-1px', display: 'flex', alignItems: 'baseline' }}>
           <span style={{ color: '#ef4444' }}>SMAART</span>
           <span style={{ color: '#666', margin: '0 5px', fontWeight: '300' }}>|</span>
           <span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', letterSpacing: '0px', fontFamily: 'monospace' }}>v3.5</span>
+          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', letterSpacing: '0px', fontFamily: 'monospace' }}>v3.6</span>
         </h1>
         <div style={{display:'flex', gap:'5px'}}>
           <div style={{display:'flex', alignItems:'center', background:'#111', borderRadius:'4px', padding:'2px 5px', border:'1px solid #333'}}>
@@ -174,7 +182,7 @@ export default function JudoPlayer() {
               onChange={(e) => setInputVideoId(e.target.value)} 
               onBlur={trocarVideo}
               style={{background:'transparent', border:'none', color:'#ccc', width:'100px', fontSize:'12px', marginLeft:'5px'}} 
-              placeholder="Video ID"
+              placeholder="ID do Vídeo"
             />
           </div>
           <button onClick={baixarCSV} style={{background:'#2563eb', color:'white', border:'none', padding:'8px 12px', borderRadius:'4px', cursor:'pointer', display:'flex', gap:'5px', alignItems:'center'}}>
@@ -202,10 +210,10 @@ export default function JudoPlayer() {
         </div>
       )}
 
-      {/* ÁREA PRINCIPAL (VÍDEO + CONTROLES) - Placar removido daqui e movido para baixo */}
+      {/* ÁREA PRINCIPAL (VÍDEO + CONTROLES) */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
         
-        {/* VÍDEO (Youtube) */}
+        {/* VÍDEO */}
         <div style={{ flex: '2 1 400px', minWidth: '300px', width: '100%' }}>
           <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000', marginBottom: '15px', position: 'relative', paddingTop: '56.25%' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
@@ -217,7 +225,6 @@ export default function JudoPlayer() {
         {/* CONTROLES */}
         <div style={{ flex: '1 1 300px', minWidth: '300px', width: '100%' }}>
           
-          {/* BOTÕES DE ARBITRAGEM */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '5px', padding: '10px', background: '#111', borderRadius: '8px', border: '1px solid #333', marginBottom: '15px' }}>
             <button onClick={() => registrarFluxo('HAJIME')} style={{background: '#15803d', color:'white', border:'none', padding:'12px 5px', fontWeight:'bold', borderRadius:'6px', fontSize:'11px', display:'flex', flexDirection:'column', alignItems:'center'}}><PlayCircle size={20}/> HAJIME</button>
             <button onClick={() => registrarFluxo('MATE')} style={{background: '#b91c1c', color:'white', border:'none', padding:'12px 5px', fontWeight:'bold', borderRadius:'6px', fontSize:'11px', display:'flex', flexDirection:'column', alignItems:'center'}}><PauseCircle size={20}/> MATE</button>
@@ -225,7 +232,6 @@ export default function JudoPlayer() {
             <button onClick={() => registrarFluxo('SOREMADE')} style={{background: '#333', color:'white', border:'none', padding:'12px 5px', fontWeight:'bold', borderRadius:'6px', fontSize:'11px', display:'flex', flexDirection:'column', alignItems:'center'}}><Flag size={20}/> FIM</button>
           </div>
 
-          {/* PUNIÇÕES */}
           <div style={{ background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', padding: '15px', marginBottom: '15px' }}>
              <h3 style={{margin:'0 0 10px 0', fontSize:'12px', color:'#aaa', display:'flex', alignItems:'center', gap:'5px'}}><Gavel size={14}/> PUNIÇÕES</h3>
              <div style={{display:'flex', gap:'5px'}}>
@@ -235,7 +241,6 @@ export default function JudoPlayer() {
              </div>
           </div>
           
-          {/* REGISTRO TÉCNICO */}
           <div style={{ padding: '15px', background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333' }}>
             <h3 style={{margin:'0 0 10px 0', fontSize:'12px', color:'#aaa'}}>REGISTRO TÉCNICO</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
@@ -252,7 +257,7 @@ export default function JudoPlayer() {
             <div style={{display:'flex', gap:'5px', position:'relative'}}>
               <div style={{flex:2, position:'relative'}}>
                 <input type="text" placeholder="Técnica..." value={nomeGolpe} onChange={e=>setNomeGolpe(e.target.value)} style={{width:'100%', padding:'12px', background:'#000', border:'1px solid #444', color:'white', borderRadius:'4px', fontSize:'16px'}}/>
-                {sugestoes.length > 0 && <div style={{position:'absolute', bottom:'100%', width:'100%', background:'#333', zIndex:100, border:'1px solid #555', maxHeight:'150px', overflowY:'auto'}}>{sugestoes.map(s=><div key={s} onClick={()=>{setNomeGolpe(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setGrupoSelecionado(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'10px', borderBottom:'1px solid #444'}}>{s}</div>)}</div>}
+                {sugestoes.length > 0 && <div style={{position:'absolute', bottom:'100%', width:'100%', background:'#333', zIndex:100, border:'1px solid #555', maxHeight:'150px', overflowY:'auto'}}>{sugestoes.map(s=><div key={s} onClick={()=>{setNomeGolpe(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setGrupoSelecionado(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'10px', borderBottom:'1px solid #444', cursor:'pointer'}}>{s}</div>)}</div>}
               </div>
               <button onClick={iniciarRegistroTecnica} style={{flex:1, background:'linear-gradient(to right, #3b82f6, #2563eb)', color:'white', border:'none', borderRadius:'4px', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}>
                 <CheckCircle size={24}/>
@@ -263,11 +268,10 @@ export default function JudoPlayer() {
 
       </div>
 
-      {/* PLACAR (MOVIDO PARA CÁ) */}
+      {/* PLACAR (AGORA ABAIXO) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px', marginBottom: '15px', background: '#000', padding: '10px', borderRadius: '12px', border: '1px solid #333', marginTop: '20px' }}>
-        {/* BRANCO */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: '1px solid #333' }}>
-          <div style={{fontSize: '16px', fontWeight: 'bold'}}>⚪ <span style={{display: 'none', md: 'inline'}}>BRANCO</span></div>
+          <div style={{fontSize: isMobile?'14px':'16px', fontWeight: 'bold'}}>⚪ <span style={{display: isMobile?'none':'inline'}}>BRANCO</span></div>
           <div style={{display: 'flex', gap: '8px', marginTop: '5px', flexWrap:'wrap', justifyContent:'center'}}>
              <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color:'#777'}}>I</div><div style={{fontSize:'24px', fontWeight:'bold'}}>{placar.branco.ippon}</div></div>
              <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color:'#fbbf24'}}>W</div><div style={{fontSize:'24px', fontWeight:'bold', color: '#fbbf24'}}>{placar.branco.waza}</div></div>
@@ -275,14 +279,12 @@ export default function JudoPlayer() {
              <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color:'#ef4444'}}>S</div><div style={{fontSize:'24px', color: '#ef4444'}}>{placar.branco.shido}</div></div>
           </div>
         </div>
-        {/* TEMPO */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{fontSize: '10px', color: tempoDeLuta.isGS ? '#fbbf24' : '#aaa', fontWeight: 'bold'}}>{tempoDeLuta.isGS ? "GOLDEN SCORE" : "TEMPO"}</div>
           <div style={{fontSize: '36px', fontFamily: 'monospace', fontWeight: 'bold', color: tempoDeLuta.isGS ? '#fbbf24' : 'white', lineHeight: '1'}}>{formatTime(tempoDeLuta.total)}</div>
         </div>
-        {/* AZUL */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '1px solid #333' }}>
-          <div style={{fontSize: '16px', fontWeight: 'bold', color: '#3b82f6'}}>🔵 <span style={{display: 'none', md: 'inline'}}>AZUL</span></div>
+          <div style={{fontSize: isMobile?'14px':'16px', fontWeight: 'bold', color: '#3b82f6'}}>🔵 <span style={{display: isMobile?'none':'inline'}}>AZUL</span></div>
           <div style={{display: 'flex', gap: '8px', marginTop: '5px', flexWrap:'wrap', justifyContent:'center'}}>
              <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color:'#ef4444'}}>S</div><div style={{fontSize:'24px', color: '#ef4444'}}>{placar.azul.shido}</div></div>
              <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color:'#999'}}>Y</div><div style={{fontSize:'24px', color: '#999'}}>{placar.azul.yuko}</div></div>
@@ -292,7 +294,7 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* ÁREA DE LOG (SEMPRE NO FIM, LARGURA TOTAL) */}
+      {/* ÁREA DE LOG */}
       <div style={{ marginTop: '20px', width: '100%' }}>
         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
           <h3 style={{margin:0, fontSize:'16px', borderBottom:'2px solid #333', paddingBottom:'5px', width:'100%'}}>LOG ({eventos.length})</h3>
