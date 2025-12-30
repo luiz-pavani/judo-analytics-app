@@ -220,7 +220,7 @@ export default function JudoPlayer() {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '25px', alignItems: 'start' }}>
         <div>
           <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000', marginBottom: '15px' }}>
-            <YouTube videoId="Jz6nuq5RBUA" onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '500px', playerVars: { controls: 0, rel: 0 } }} />
+            <YouTube videoId="Jz6nuq5RBUA" onReady={onReady} onStateChange={onratechange} opts={{ width: '100%', height: '500px', playerVars: { controls: 0, rel: 0 } }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', padding: '15px', background: '#111', borderRadius: '8px', border: '1px solid #333', marginBottom: '20px' }}>
