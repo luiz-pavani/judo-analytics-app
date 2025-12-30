@@ -3,7 +3,7 @@ import YouTube from 'react-youtube';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Download, Trash2, ArrowLeftRight, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle } from 'lucide-react';
 
-// --- BANCO DE DADOS (Mantido) ---
+// --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
 const DB_GOLPES: Record<string, string> = {
   "Seoi-nage": "TE-WAZA", "Ippon-seoi-nage": "TE-WAZA", "Tai-otoshi": "TE-WAZA", "Kata-guruma": "TE-WAZA", "Uki-otoshi": "TE-WAZA", 
@@ -31,29 +31,25 @@ export default function JudoPlayer() {
   const [sugestoes, setSugestoes] = useState<string[]>([]);
   const [motivoShido, setMotivoShido] = useState(DB_SHIDOS[0]);
 
-  // --- NOVO: ESTADO DO MODAL DE PONTUAÇÃO ---
+  // Estado do Modal
   const [modalAberto, setModalAberto] = useState(false);
-  const [registroPendente, setRegistroPendente] = useState<any>(null); // Guarda o golpe enquanto espera a pontuação
+  const [registroPendente, setRegistroPendente] = useState<any>(null);
 
   const [eventos, setEventos] = useState(() => {
-    const salvos = localStorage.getItem('jaap_dados_v6'); 
+    const salvos = localStorage.getItem('jaap_dados_v7'); 
     return salvos ? JSON.parse(salvos) : [];
   });
 
-  useEffect(() => { localStorage.setItem('jaap_dados_v6', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('jaap_dados_v7', JSON.stringify(eventos)); }, [eventos]);
 
-  // --- LÓGICA DO PLACAR (Atualizada para ler pontuação dentro da técnica) ---
+  // Placar
   const placar = useMemo(() => {
     const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
     eventos.forEach((ev: any) => {
       const quem = ev.atleta === 'BRANCO' ? p.branco : p.azul;
-      
-      // Conta pontuação vinculada à técnica
       if (ev.resultado === 'IPPON') quem.ippon++;
       if (ev.resultado === 'WAZA-ARI') quem.waza++;
       if (ev.resultado === 'YUKO') quem.yuko++;
-
-      // Conta punições isoladas
       if (ev.categoria === 'PUNICAO') {
         if (ev.tipo === 'SHIDO') quem.shido++;
         if (ev.tipo === 'HANSOKU') quem.shido += 3;
@@ -62,6 +58,7 @@ export default function JudoPlayer() {
     return p;
   }, [eventos]);
 
+  // Tempo de Luta
   const tempoDeLuta = useMemo(() => {
     let tempoTotal = 0; let ultimoHajime = null; let isGoldenScore = false;
     const ordenados = [...eventos].sort((a, b) => a.tempo - b.tempo);
@@ -78,9 +75,8 @@ export default function JudoPlayer() {
     return { total: tempoTotal, isGS: isGoldenScore };
   }, [eventos, currentTime]);
 
-  // --- PASSO 1: INICIAR REGISTRO (Pausa vídeo e abre modal) ---
+  // Ações
   const iniciarRegistroTecnica = () => {
-    // 1. Cria o objeto base do golpe
     const dadosPreliminares = {
       id: Date.now(),
       tempo: currentTime,
@@ -91,43 +87,23 @@ export default function JudoPlayer() {
       lado: ladoAtual,
       cor: CORES_GRUPOS[grupoSelecionado]
     };
-
-    // 2. Pausa o vídeo para o árbitro decidir
     if (playerRef.current) playerRef.current.pauseVideo();
     setIsPlaying(false);
-
-    // 3. Abre o modal
     setRegistroPendente(dadosPreliminares);
     setModalAberto(true);
   };
 
-  // --- PASSO 2: CONFIRMAR PONTUAÇÃO (Salva tudo) ---
   const confirmarPontuacao = (resultado: string) => {
     if (!registroPendente) return;
-
-    const eventoFinal = {
-      ...registroPendente,
-      resultado: resultado // 'NADA', 'YUKO', 'WAZA-ARI', 'IPPON'
-    };
-
+    const eventoFinal = { ...registroPendente, resultado: resultado };
     setEventos([eventoFinal, ...eventos]);
-    
-    // Limpeza
     setModalAberto(false);
     setRegistroPendente(null);
     setNomeGolpe(''); 
     setSugestoes([]);
-    
-    // Opcional: Dar play automático após escolher? (Deixei pausado para análise com calma)
-    // if (playerRef.current) playerRef.current.playVideo();
   };
 
-  const cancelarRegistro = () => {
-    setModalAberto(false);
-    setRegistroPendente(null);
-  };
-
-  // Outros registros simples
+  const cancelarRegistro = () => { setModalAberto(false); setRegistroPendente(null); };
   const registrarFluxo = (tipo: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', cor: '#555'}, ...eventos]);
   const registrarPunicao = (tipo: string, atleta: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', cor: '#fbbf24'}, ...eventos]);
 
@@ -149,14 +125,13 @@ export default function JudoPlayer() {
   }, [isPlaying]);
 
   const onReady = (e: any) => { playerRef.current = e.target; setDuration(e.target.getDuration()); };
-  const togglePlay = () => isPlaying ? playerRef.current?.pauseVideo() : playerRef.current?.playVideo();
+  const onStateChange = (e: any) => setIsPlaying(e.data === 1);
   const irPara = (t: number) => { playerRef.current.seekTo(t, true); playerRef.current.playVideo(); };
   const formatTime = (s: number) => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Tempo (s),Categoria,Técnica,Resultado,Atleta,Lado,Detalhe\n";
     eventos.forEach((ev: any) => {
-      // Formatação segura para CSV
       csv += `${ev.tempo.toFixed(3).replace('.', ',')},${ev.categoria},${ev.especifico || ev.tipo || '-'},${ev.resultado || '-'},${ev.atleta},${ev.lado},${ev.grupo || ev.tipo}\n`;
     });
     const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `jaap_pro_luta.csv`; link.click();
@@ -165,7 +140,7 @@ export default function JudoPlayer() {
   return (
     <div style={{ maxWidth: '1600px', width: '95%', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', paddingBottom: '100px', position: 'relative' }}>
       
-      {/* --- MODAL DE DECISÃO (OVERLAY) --- */}
+      {/* MODAL */}
       {modalAberto && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
@@ -179,7 +154,10 @@ export default function JudoPlayer() {
             
             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px'}}>
               <button onClick={() => confirmarPontuacao('NADA')} style={{padding: '20px', fontSize: '16px', background: '#374151', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>SEM PONTUAÇÃO</button>
-              <button onClick={() => confirmarPontuacao('YUKO')} style={{padding: '20px', fontSize: '16px', background: '#44403c', color: '#aaa', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>YUKO (Antigo)</button>
+              
+              {/* BOTÃO ATUALIZADO AQUI: APENAS YUKO */}
+              <button onClick={() => confirmarPontuacao('YUKO')} style={{padding: '20px', fontSize: '16px', background: '#44403c', color: '#aaa', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>YUKO</button>
+              
               <button onClick={() => confirmarPontuacao('WAZA-ARI')} style={{padding: '20px', fontSize: '18px', background: '#eab308', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>WAZA-ARI</button>
               <button onClick={() => confirmarPontuacao('IPPON')} style={{padding: '20px', fontSize: '20px', background: '#fff', color: '#000', border: '4px solid #ef4444', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>IPPON!</button>
             </div>
@@ -220,7 +198,7 @@ export default function JudoPlayer() {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '25px', alignItems: 'start' }}>
         <div>
           <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000', marginBottom: '15px' }}>
-            <YouTube videoId="Jz6nuq5RBUA" onReady={onReady} onStateChange={onratechange} opts={{ width: '100%', height: '500px', playerVars: { controls: 0, rel: 0 } }} />
+            <YouTube videoId="Jz6nuq5RBUA" onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '500px', playerVars: { controls: 0, rel: 0 } }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', padding: '15px', background: '#111', borderRadius: '8px', border: '1px solid #333', marginBottom: '20px' }}>
@@ -230,7 +208,6 @@ export default function JudoPlayer() {
             <button onClick={() => registrarFluxo('SOREMADE')} style={{background: '#333', color:'white', border:'none', padding:'15px', fontWeight:'bold', cursor:'pointer', borderRadius:'6px'}}><Flag size={24}/> SOREMADE</button>
           </div>
 
-          {/* ARBITRAGEM (SÓ PUNIÇÕES AGORA, PONTOS SÃO NO GOLPE) */}
           <div style={{ background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', padding: '20px', marginBottom: '20px' }}>
              <h3 style={{margin:'0 0 15px 0', fontSize:'14px', color:'#aaa', display:'flex', alignItems:'center', gap:'10px'}}><Gavel size={18}/> PUNIÇÕES (SHIDO/HANSOKU)</h3>
              <div style={{display:'flex', gap:'5px', marginBottom: '10px'}}>
@@ -240,7 +217,6 @@ export default function JudoPlayer() {
              </div>
           </div>
           
-          {/* COCKPIT TÉCNICO */}
           <div style={{ padding: '20px', background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333' }}>
             <h3 style={{margin:'0 0 15px 0', fontSize:'14px', color:'#aaa'}}>REGISTRO TÉCNICO</h3>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
@@ -283,7 +259,6 @@ export default function JudoPlayer() {
                   <div style={{fontWeight:'bold', color: ev.atleta === 'AZUL' ? '#60a5fa' : 'white'}}>
                     {ev.especifico || ev.tipo}
                   </div>
-                  {/* EXIBE RESULTADO OU MOTIVO */}
                   {ev.resultado && ev.resultado !== 'NADA' && <div style={{marginTop:'4px', background: ev.resultado==='IPPON'?'white':'#eab308', color:'black', display:'inline-block', padding:'2px 6px', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>{ev.resultado}</div>}
                   {ev.categoria === 'PUNICAO' && <div style={{fontSize:'11px', color:'#ef4444', marginTop:'2px'}}>{ev.especifico}</div>}
                 </div>
