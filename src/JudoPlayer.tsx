@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Download, Trash2, ArrowLeftRight, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle } from 'lucide-react';
 
 // --- BANCO DE DADOS: MOTIVOS DE SHIDO (IJF) ---
