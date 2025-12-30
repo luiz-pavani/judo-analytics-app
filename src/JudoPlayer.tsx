@@ -85,7 +85,7 @@ export default function JudoPlayer() {
       especifico: nomeGolpe || "Técnica Geral",
       atleta: atletaAtual,
       lado: ladoAtual,
-      cor: CORES_GRUPOS[grupoSelecionado]
+      corTecnica: CORES_GRUPOS[grupoSelecionado] // Guardamos a cor da técnica separada
     };
     if (playerRef.current) playerRef.current.pauseVideo();
     setIsPlaying(false);
@@ -104,8 +104,8 @@ export default function JudoPlayer() {
   };
 
   const cancelarRegistro = () => { setModalAberto(false); setRegistroPendente(null); };
-  const registrarFluxo = (tipo: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', cor: '#555'}, ...eventos]);
-  const registrarPunicao = (tipo: string, atleta: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', cor: '#fbbf24'}, ...eventos]);
+  const registrarFluxo = (tipo: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: '#555'}, ...eventos]);
+  const registrarPunicao = (tipo: string, atleta: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: '#fbbf24'}, ...eventos]);
 
   // Helpers
   useEffect(() => {
@@ -137,6 +137,14 @@ export default function JudoPlayer() {
     const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `jaap_pro_luta.csv`; link.click();
   };
 
+  // --- FUNÇÃO AUXILIAR PARA COR DA BORDA ---
+  const getCorBorda = (ev: any) => {
+    if (ev.categoria === 'FLUXO') return '#555';
+    if (ev.categoria === 'PUNICAO') return '#ef4444'; // Vermelho para punição
+    if (ev.atleta === 'AZUL') return '#2563eb'; // Azul Forte
+    return '#ffffff'; // Branco Puro
+  };
+
   return (
     <div style={{ maxWidth: '1600px', width: '95%', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', paddingBottom: '100px', position: 'relative' }}>
       
@@ -154,10 +162,7 @@ export default function JudoPlayer() {
             
             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px'}}>
               <button onClick={() => confirmarPontuacao('NADA')} style={{padding: '20px', fontSize: '16px', background: '#374151', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>SEM PONTUAÇÃO</button>
-              
-              {/* BOTÃO ATUALIZADO AQUI: APENAS YUKO */}
               <button onClick={() => confirmarPontuacao('YUKO')} style={{padding: '20px', fontSize: '16px', background: '#44403c', color: '#aaa', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>YUKO</button>
-              
               <button onClick={() => confirmarPontuacao('WAZA-ARI')} style={{padding: '20px', fontSize: '18px', background: '#eab308', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>WAZA-ARI</button>
               <button onClick={() => confirmarPontuacao('IPPON')} style={{padding: '20px', fontSize: '20px', background: '#fff', color: '#000', border: '4px solid #ef4444', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}>IPPON!</button>
             </div>
@@ -250,13 +255,20 @@ export default function JudoPlayer() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto', background: '#111', border: '1px solid #333', borderRadius: '12px', padding: '10px' }}>
             {eventos.map((ev: any) => (
-              <div key={ev.id} style={{ padding: '12px', marginBottom: '5px', borderRadius: '6px', background: '#1f2937', borderLeft: `4px solid ${ev.cor}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div key={ev.id} style={{ 
+                padding: '12px', marginBottom: '5px', borderRadius: '6px', 
+                background: '#1f2937', 
+                borderLeft: `5px solid ${getCorBorda(ev)}`, // LÓGICA CORRIGIDA AQUI
+                display:'flex', alignItems:'center', justifyContent:'space-between' 
+              }}>
                 <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
-                  <div style={{display:'flex', gap:'10px', fontSize:'12px', color:'#888'}}>
+                  <div style={{display:'flex', gap:'10px', fontSize:'12px', color:'#888', alignItems:'center'}}>
                     <span style={{color:'#fbbf24', fontFamily:'monospace'}}>{ev.tempo.toFixed(1)}s</span>
                     <span style={{textTransform:'uppercase'}}>{ev.lado !== '-' ? ev.lado : ''}</span>
+                    {/* ETIQUETA DO GRUPO TÉCNICO AGORA FICA AQUI */}
+                    {ev.grupo && <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background: ev.corTecnica, color:'white', fontWeight:'bold'}}>{ev.grupo}</span>}
                   </div>
-                  <div style={{fontWeight:'bold', color: ev.atleta === 'AZUL' ? '#60a5fa' : 'white'}}>
+                  <div style={{fontWeight:'bold', color: ev.atleta === 'AZUL' ? '#60a5fa' : 'white', fontSize:'15px', marginTop:'4px'}}>
                     {ev.especifico || ev.tipo}
                   </div>
                   {ev.resultado && ev.resultado !== 'NADA' && <div style={{marginTop:'4px', background: ev.resultado==='IPPON'?'white':'#eab308', color:'black', display:'inline-block', padding:'2px 6px', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>{ev.resultado}</div>}
