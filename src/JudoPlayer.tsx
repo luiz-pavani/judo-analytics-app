@@ -1,20 +1,18 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, Trash2, ArrowLeftRight, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle, Smartphone } from 'lucide-react';
+import { Download, Trash2, ArrowLeftRight, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, CheckCircle } from 'lucide-react';
 
 // --- BANCO DE DADOS: MOTIVOS DE SHIDO (IJF) ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
 
 // --- BANCO DE DADOS: AS 100 TÉCNICAS (KODOKAN) ---
-// Grafia oficial: minúsculas e mácrons
 const DB_GOLPES: Record<string, string> = {
-  // --- NAGE-WAZA (68) ---
+  // NAGE-WAZA
   "seoi-nage": "TE-WAZA", "ippon-seoi-nage": "TE-WAZA", "seoi-otoshi": "TE-WAZA", "tai-otoshi": "TE-WAZA", "kata-guruma": "TE-WAZA", "sukui-nage": "TE-WAZA", "obi-otoshi": "TE-WAZA", "uki-otoshi": "TE-WAZA", "sumi-otoshi": "TE-WAZA", "yama-arashi": "TE-WAZA", "obi-tori-gaeshi": "TE-WAZA", "morote-gari": "TE-WAZA", "kuchiki-taoshi": "TE-WAZA", "kibisu-gaeshi": "TE-WAZA", "uchi-mata-sukashi": "TE-WAZA", "kouchi-gaeshi": "TE-WAZA",
   "uki-goshi": "KOSHI-WAZA", "ō-goshi": "KOSHI-WAZA", "koshi-guruma": "KOSHI-WAZA", "tsurikomi-goshi": "KOSHI-WAZA", "sode-tsurikomi-goshi": "KOSHI-WAZA", "harai-goshi": "KOSHI-WAZA", "tsuri-goshi": "KOSHI-WAZA", "hane-goshi": "KOSHI-WAZA", "utsuri-goshi": "KOSHI-WAZA", "ushiro-goshi": "KOSHI-WAZA",
   "de-ashi-harai": "ASHI-WAZA", "hiza-guruma": "ASHI-WAZA", "sasae-tsurikomi-ashi": "ASHI-WAZA", "ō-soto-gari": "ASHI-WAZA", "ō-uchi-gari": "ASHI-WAZA", "ko-soto-gari": "ASHI-WAZA", "ko-uchi-gari": "ASHI-WAZA", "okuri-ashi-harai": "ASHI-WAZA", "uchi-mata": "ASHI-WAZA", "ko-soto-gake": "ASHI-WAZA", "ashi-guruma": "ASHI-WAZA", "harai-tsurikomi-ashi": "ASHI-WAZA", "ō-guruma": "ASHI-WAZA", "ō-soto-guruma": "ASHI-WAZA", "ō-soto-otoshi": "ASHI-WAZA", "tsubame-gaeshi": "ASHI-WAZA", "ō-soto-gaeshi": "ASHI-WAZA", "ō-uchi-gaeshi": "ASHI-WAZA", "hane-goshi-gaeshi": "ASHI-WAZA", "harai-goshi-gaeshi": "ASHI-WAZA", "uchi-mata-gaeshi": "ASHI-WAZA",
   "tomoe-nage": "SUTEMI-WAZA", "sumi-gaeshi": "SUTEMI-WAZA", "hikikomi-gaeshi": "SUTEMI-WAZA", "tawara-gaeshi": "SUTEMI-WAZA", "ura-nage": "SUTEMI-WAZA", "yoko-otoshi": "SUTEMI-WAZA", "tani-otoshi": "SUTEMI-WAZA", "hane-makikomi": "SUTEMI-WAZA", "soto-makikomi": "SUTEMI-WAZA", "uchi-makikomi": "SUTEMI-WAZA", "uki-waza": "SUTEMI-WAZA", "yoko-wakare": "SUTEMI-WAZA", "yoko-guruma": "SUTEMI-WAZA", "yoko-gake": "SUTEMI-WAZA", "daki-wakare": "SUTEMI-WAZA", "ō-soto-makikomi": "SUTEMI-WAZA", "uchi-mata-makikomi": "SUTEMI-WAZA", "harai-makikomi": "SUTEMI-WAZA", "ko-uchi-makikomi": "SUTEMI-WAZA", "kani-basami": "SUTEMI-WAZA", "kawazu-gake": "SUTEMI-WAZA",
-  // --- KATAME-WAZA (32) ---
+  // KATAME-WAZA
   "kesa-gatame": "OSAEKOMI-WAZA", "kuzure-kesa-gatame": "OSAEKOMI-WAZA", "ushiro-kesa-gatame": "OSAEKOMI-WAZA", "kata-gatame": "OSAEKOMI-WAZA", "kami-shihō-gatame": "OSAEKOMI-WAZA", "kuzure-kami-shihō-gatame": "OSAEKOMI-WAZA", "yoko-shihō-gatame": "OSAEKOMI-WAZA", "tate-shihō-gatame": "OSAEKOMI-WAZA", "uki-gatame": "OSAEKOMI-WAZA", "ura-gatame": "OSAEKOMI-WAZA",
   "nami-jūji-jime": "SHIME-WAZA", "gyaku-jūji-jime": "SHIME-WAZA", "kata-jūji-jime": "SHIME-WAZA", "hadaka-jime": "SHIME-WAZA", "okuri-eri-jime": "SHIME-WAZA", "kataha-jime": "SHIME-WAZA", "katate-jime": "SHIME-WAZA", "ryōte-jime": "SHIME-WAZA", "sode-guruma-jime": "SHIME-WAZA", "tsukkomi-jime": "SHIME-WAZA", "sankaku-jime": "SHIME-WAZA", "dō-jime": "SHIME-WAZA",
   "ude-garami": "KANSETSU-WAZA", "ude-hishigi-jūji-gatame": "KANSETSU-WAZA", "ude-hishigi-ude-gatame": "KANSETSU-WAZA", "ude-hishigi-hiza-gatame": "KANSETSU-WAZA", "ude-hishigi-waki-gatame": "KANSETSU-WAZA", "ude-hishigi-hara-gatame": "KANSETSU-WAZA", "ude-hishigi-ashi-gatame": "KANSETSU-WAZA", "ude-hishigi-te-gatame": "KANSETSU-WAZA", "ude-hishigi-sankaku-gatame": "KANSETSU-WAZA", "ashi-garami": "KANSETSU-WAZA"
@@ -28,8 +26,6 @@ export default function JudoPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  
-  // Detecção de Mobile (Responsividade)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
 
   useEffect(() => {
@@ -38,7 +34,6 @@ export default function JudoPlayer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Contexto
   const [atletaAtual, setAtletaAtual] = useState('BRANCO'); 
   const [ladoAtual, setLadoAtual] = useState('DIREITA');   
   const [nomeGolpe, setNomeGolpe] = useState('');          
@@ -46,11 +41,9 @@ export default function JudoPlayer() {
   const [sugestoes, setSugestoes] = useState<string[]>([]);
   const [motivoShido, setMotivoShido] = useState(DB_SHIDOS[0]);
 
-  // Modal
   const [modalAberto, setModalAberto] = useState(false);
   const [registroPendente, setRegistroPendente] = useState<any>(null);
 
-  // Banco de Dados Local
   const [eventos, setEventos] = useState(() => {
     const salvos = localStorage.getItem('smaartpro_db_v3');
     return salvos ? JSON.parse(salvos) : [];
@@ -58,7 +51,6 @@ export default function JudoPlayer() {
 
   useEffect(() => { localStorage.setItem('smaartpro_db_v3', JSON.stringify(eventos)); }, [eventos]);
 
-  // Placar
   const placar = useMemo(() => {
     const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
     eventos.forEach((ev: any) => {
@@ -74,7 +66,6 @@ export default function JudoPlayer() {
     return p;
   }, [eventos]);
 
-  // Tempo
   const tempoDeLuta = useMemo(() => {
     let tempoTotal = 0; let ultimoHajime = null; let isGoldenScore = false;
     const ordenados = [...eventos].sort((a, b) => a.tempo - b.tempo);
@@ -150,13 +141,17 @@ export default function JudoPlayer() {
   return (
     <div style={{ maxWidth: '100%', width: '100%', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', paddingBottom: '100px', boxSizing: 'border-box', padding: isMobile ? '10px' : '20px' }}>
       
-      {/* HEADER MARCA */}
+      {/* HEADER MARCA LIMPA + VERSÃO */}
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ margin: 0, fontSize: isMobile ? '22px' : '28px', fontWeight: '900', letterSpacing: '-1px' }}>
-          <span style={{ color: '#ef4444' }}>SMAART</span><span style={{ color: '#666', margin: '0 5px', fontWeight: '300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          {!isMobile && <span style={{ fontSize: '12px', color: '#666', marginLeft: '10px', letterSpacing: '0px' }}>v3.2 Mobile</span>}
+        <h1 style={{ margin: 0, fontSize: isMobile ? '22px' : '28px', fontWeight: '900', letterSpacing: '-1px', display: 'flex', alignItems: 'baseline' }}>
+          <span style={{ color: '#ef4444' }}>SMAART</span>
+          <span style={{ color: '#666', margin: '0 5px', fontWeight: '300' }}>|</span>
+          <span style={{ color: 'white' }}>PRO</span>
+          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', letterSpacing: '0px', fontFamily: 'monospace' }}>v3.3</span>
         </h1>
-        <button onClick={baixarCSV} style={{background:'#2563eb', color:'white', border:'none', padding:'8px 12px', borderRadius:'4px', cursor:'pointer'}}><Download size={18}/></button>
+        <button onClick={baixarCSV} style={{background:'#2563eb', color:'white', border:'none', padding:'8px 12px', borderRadius:'4px', cursor:'pointer', display:'flex', gap:'5px', alignItems:'center'}}>
+          <Download size={18}/> <span style={{display: isMobile?'none':'inline'}}>CSV</span>
+        </button>
       </div>
 
       {/* MODAL RESPONSIVO */}
@@ -178,9 +173,8 @@ export default function JudoPlayer() {
         </div>
       )}
 
-      {/* PLACAR ADAPTÁVEL */}
+      {/* PLACAR */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px', marginBottom: '15px', background: '#000', padding: isMobile ? '10px 5px' : '15px', borderRadius: '12px', border: '1px solid #333' }}>
-        {/* BRANCO */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: '1px solid #333' }}>
           <div style={{fontSize: isMobile?'14px':'24px', fontWeight: 'bold'}}>⚪ {isMobile ? '' : 'BRANCO'}</div>
           <div style={{display: 'flex', gap: isMobile?'5px':'20px', marginTop: '5px', flexWrap:'wrap', justifyContent:'center'}}>
@@ -190,12 +184,10 @@ export default function JudoPlayer() {
              <div style={{textAlign:'center'}}><div style={{fontSize:'10px', color:'#ef4444'}}>S</div><div style={{fontSize:isMobile?'20px':'32px', color: '#ef4444'}}>{placar.branco.shido}</div></div>
           </div>
         </div>
-        {/* TEMPO */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{fontSize: isMobile?'10px':'14px', color: tempoDeLuta.isGS ? '#fbbf24' : '#aaa', fontWeight: 'bold'}}>{tempoDeLuta.isGS ? "GS" : "TEMPO"}</div>
           <div style={{fontSize: isMobile?'32px':'56px', fontFamily: 'monospace', fontWeight: 'bold', color: tempoDeLuta.isGS ? '#fbbf24' : 'white', lineHeight: '1'}}>{formatTime(tempoDeLuta.total)}</div>
         </div>
-        {/* AZUL */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '1px solid #333' }}>
           <div style={{fontSize: isMobile?'14px':'24px', fontWeight: 'bold', color: '#3b82f6'}}>🔵 {isMobile ? '' : 'AZUL'}</div>
           <div style={{display: 'flex', gap: isMobile?'5px':'20px', marginTop: '5px', flexWrap:'wrap', justifyContent:'center'}}>
@@ -207,17 +199,12 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* LAYOUT PRINCIPAL RESPONSIVO */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '20px', alignItems: 'start' }}>
-        
-        {/* ÁREA ESQUERDA (VÍDEO E CONTROLES) */}
         <div>
-          {/* VÍDEO RESPONSIVO */}
           <div style={{ border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', background: '#000', marginBottom: '15px' }}>
             <YouTube videoId="Jz6nuq5RBUA" onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: isMobile ? '220px' : '500px', playerVars: { controls: 0, rel: 0 } }} />
           </div>
 
-          {/* CONTROLES DE ARBITRAGEM (GRID APERTADA NO MOBILE) */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '5px', padding: '10px', background: '#111', borderRadius: '8px', border: '1px solid #333', marginBottom: '15px' }}>
             <button onClick={() => registrarFluxo('HAJIME')} style={{background: '#15803d', color:'white', border:'none', padding:'10px', fontWeight:'bold', borderRadius:'6px', fontSize:isMobile?'10px':'14px'}}><PlayCircle size={isMobile?16:24}/><br/>HAJIME</button>
             <button onClick={() => registrarFluxo('MATE')} style={{background: '#b91c1c', color:'white', border:'none', padding:'10px', fontWeight:'bold', borderRadius:'6px', fontSize:isMobile?'10px':'14px'}}><PauseCircle size={isMobile?16:24}/><br/>MATE</button>
@@ -225,7 +212,6 @@ export default function JudoPlayer() {
             <button onClick={() => registrarFluxo('SOREMADE')} style={{background: '#333', color:'white', border:'none', padding:'10px', fontWeight:'bold', borderRadius:'6px', fontSize:isMobile?'10px':'14px'}}><Flag size={isMobile?16:24}/><br/>FIM</button>
           </div>
 
-          {/* PUNIÇÕES */}
           <div style={{ background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', padding: '15px', marginBottom: '15px' }}>
              <h3 style={{margin:'0 0 10px 0', fontSize:'12px', color:'#aaa', display:'flex', alignItems:'center', gap:'5px'}}><Gavel size={14}/> PUNIÇÕES</h3>
              <div style={{display:'flex', gap:'5px'}}>
@@ -235,10 +221,8 @@ export default function JudoPlayer() {
              </div>
           </div>
           
-          {/* REGISTRO TÉCNICO */}
           <div style={{ padding: '15px', background: '#1e1e1e', borderRadius: '12px', border: '1px solid #333' }}>
             <h3 style={{margin:'0 0 10px 0', fontSize:'12px', color:'#aaa'}}>REGISTRO TÉCNICO</h3>
-            {/* LINHA ATLETA / LADO */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
               <div style={{display:'flex', gap:'2px'}}>
                   <button onClick={() => setAtletaAtual('BRANCO')} style={{flex:1, padding:'10px', background: atletaAtual==='BRANCO'?'#ddd':'#333', border:'none', borderRadius:'4px 0 0 4px', color:atletaAtual==='BRANCO'?'black':'white', fontWeight:'bold', fontSize:'12px'}}>⚪</button>
@@ -262,7 +246,6 @@ export default function JudoPlayer() {
           </div>
         </div>
 
-        {/* ÁREA DIREITA (LOG) */}
         <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? '300px' : '100%' }}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
             <h3 style={{margin:0, fontSize:'14px'}}>LOG ({eventos.length})</h3>
@@ -272,8 +255,7 @@ export default function JudoPlayer() {
             {eventos.map((ev: any) => (
               <div key={ev.id} style={{ 
                 padding: '10px', marginBottom: '5px', borderRadius: '6px', 
-                background: '#1f2937', 
-                borderLeft: `5px solid ${getCorBorda(ev)}`, 
+                background: '#1f2937', borderLeft: `5px solid ${getCorBorda(ev)}`, 
                 display:'flex', alignItems:'center', justifyContent:'space-between', fontSize: isMobile ? '12px' : '14px'
               }}>
                 <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
