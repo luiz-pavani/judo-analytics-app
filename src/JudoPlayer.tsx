@@ -36,11 +36,11 @@ export default function JudoPlayer() {
   const [registroPendente, setRegistroPendente] = useState<any>(null);
 
   const [eventos, setEventos] = useState(() => {
-    const salvos = localStorage.getItem('jaap_dados_v7'); 
+    const salvos = localStorage.getItem('jaap_dados_v8'); // v8
     return salvos ? JSON.parse(salvos) : [];
   });
 
-  useEffect(() => { localStorage.setItem('jaap_dados_v7', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('jaap_dados_v8', JSON.stringify(eventos)); }, [eventos]);
 
   // Placar
   const placar = useMemo(() => {
@@ -85,7 +85,7 @@ export default function JudoPlayer() {
       especifico: nomeGolpe || "Técnica Geral",
       atleta: atletaAtual,
       lado: ladoAtual,
-      corTecnica: CORES_GRUPOS[grupoSelecionado] // Guardamos a cor da técnica separada
+      corTecnica: CORES_GRUPOS[grupoSelecionado]
     };
     if (playerRef.current) playerRef.current.pauseVideo();
     setIsPlaying(false);
@@ -105,7 +105,18 @@ export default function JudoPlayer() {
 
   const cancelarRegistro = () => { setModalAberto(false); setRegistroPendente(null); };
   const registrarFluxo = (tipo: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: '#555'}, ...eventos]);
-  const registrarPunicao = (tipo: string, atleta: string) => setEventos([{id: Date.now(), tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: '#fbbf24'}, ...eventos]);
+  
+  // REGISTRO DE PUNIÇÃO
+  const registrarPunicao = (tipo: string, atleta: string) => setEventos([{
+    id: Date.now(), 
+    tempo: currentTime, 
+    categoria: 'PUNICAO', 
+    tipo, 
+    especifico: motivoShido, 
+    atleta, 
+    lado: '-', 
+    corTecnica: '#fbbf24'
+  }, ...eventos]);
 
   // Helpers
   useEffect(() => {
@@ -137,12 +148,16 @@ export default function JudoPlayer() {
     const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `jaap_pro_luta.csv`; link.click();
   };
 
-  // --- FUNÇÃO AUXILIAR PARA COR DA BORDA ---
+  // --- CORREÇÃO DA BORDA ---
   const getCorBorda = (ev: any) => {
+    // 1. Fluxo (Hajime/Mate) sempre cinza
     if (ev.categoria === 'FLUXO') return '#555';
-    if (ev.categoria === 'PUNICAO') return '#ef4444'; // Vermelho para punição
-    if (ev.atleta === 'AZUL') return '#2563eb'; // Azul Forte
-    return '#ffffff'; // Branco Puro
+    
+    // 2. Agora PUNIÇÃO também obedece a cor do atleta, não é mais vermelha fixa
+    if (ev.atleta === 'AZUL') return '#2563eb'; // Borda Azul
+    if (ev.atleta === 'BRANCO') return '#ffffff'; // Borda Branca
+    
+    return '#555'; // Fallback
   };
 
   return (
@@ -258,14 +273,13 @@ export default function JudoPlayer() {
               <div key={ev.id} style={{ 
                 padding: '12px', marginBottom: '5px', borderRadius: '6px', 
                 background: '#1f2937', 
-                borderLeft: `5px solid ${getCorBorda(ev)}`, // LÓGICA CORRIGIDA AQUI
+                borderLeft: `5px solid ${getCorBorda(ev)}`, // BORDA CORRIGIDA AQUI
                 display:'flex', alignItems:'center', justifyContent:'space-between' 
               }}>
                 <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
                   <div style={{display:'flex', gap:'10px', fontSize:'12px', color:'#888', alignItems:'center'}}>
                     <span style={{color:'#fbbf24', fontFamily:'monospace'}}>{ev.tempo.toFixed(1)}s</span>
                     <span style={{textTransform:'uppercase'}}>{ev.lado !== '-' ? ev.lado : ''}</span>
-                    {/* ETIQUETA DO GRUPO TÉCNICO AGORA FICA AQUI */}
                     {ev.grupo && <span style={{fontSize:'9px', padding:'2px 6px', borderRadius:'4px', background: ev.corTecnica, color:'white', fontWeight:'bold'}}>{ev.grupo}</span>}
                   </div>
                   <div style={{fontWeight:'bold', color: ev.atleta === 'AZUL' ? '#60a5fa' : 'white', fontSize:'15px', marginTop:'4px'}}>
