@@ -26,7 +26,7 @@ export default function JudoPlayer() {
   const inputRef = useRef<any>(null);
 
   const [videoMode, setVideoMode] = useState<'YOUTUBE' | 'FILE'>('YOUTUBE');
-  const [youtubeId, setYoutubeId] = useState('Jz6nuq5RBUA');
+  const [youtubeId, setYoutubeId] = useState('kU_gjfnyu6A');
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
   
@@ -234,7 +234,7 @@ export default function JudoPlayer() {
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'24px', fontWeight: '900', letterSpacing: '-1px', display: 'flex', alignItems: 'baseline' }}>
           <span style={{ color: '#ef4444' }}>SMAART</span><span style={{ color: '#666', margin: '0 5px' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.4</span>
+          <span style={{ fontSize: '10px', color: '#666', marginLeft: '8px', fontFamily: 'monospace' }}>v5.5</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background:'#222', borderRadius:'6px', padding:'2px', border:'1px solid #444'}}>
@@ -246,16 +246,18 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* MODAL */}
+      {/* --- SUPER MODAL DE REGISTRO --- */}
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
           <div style={{ background: '#1e1e1e', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '500px', border: '1px solid #444', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+            
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
               <h2 style={{margin:0, color:'#fbbf24', fontSize:'22px', display:'flex', alignItems:'center', gap:'10px'}}>
                 <MousePointerClick /> REGISTRAR AÇÃO
               </h2>
               <button onClick={cancelarRegistro} style={{background:'none', border:'none', color:'#666', cursor:'pointer'}}><X size={24}/></button>
             </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
               <div>
                 <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>QUEM?</div>
@@ -272,16 +274,25 @@ export default function JudoPlayer() {
                 </div>
               </div>
             </div>
+
             <div style={{marginBottom:'25px', position:'relative'}}>
               <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>O QUÊ?</div>
               <div style={{position:'relative'}}>
                 <Search size={18} style={{position:'absolute', top:'12px', left:'12px', color:'#666'}}/>
-                <input ref={inputRef} type="text" placeholder="Comece a digitar..." value={modalNome} onChange={e=>setModalNome(e.target.value)} style={{width:'100%', padding:'12px 12px 12px 40px', background:'#000', border:'1px solid #555', color:'white', borderRadius:'8px', fontSize:'18px', boxSizing:'border-box'}}/>
+                <input 
+                  ref={inputRef}
+                  type="text" 
+                  placeholder="Comece a digitar (ex: seoi...)" 
+                  value={modalNome} 
+                  onChange={e=>setModalNome(e.target.value)} 
+                  style={{width:'100%', padding:'12px 12px 12px 40px', background:'#000', border:'1px solid #555', color:'white', borderRadius:'8px', fontSize:'18px', boxSizing:'border-box'}}
+                />
               </div>
               {sugestoes.length > 0 && (
                 <div style={{position:'absolute', top:'100%', width:'100%', background:'#2d2d2d', zIndex:100, border:'1px solid #444', borderRadius:'0 0 8px 8px', maxHeight:'150px', overflowY:'auto'}}>
                   {sugestoes.map(s=>(
-                    <div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'12px', borderBottom:'1px solid #444', cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
+                    <div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} 
+                         style={{padding:'12px', borderBottom:'1px solid #444', cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
                       <span>{s}</span>
                       <span style={{fontSize:'10px', background:'#444', padding:'2px 6px', borderRadius:'4px'}}>{DB_GOLPES[Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase())||'']}</span>
                     </div>
@@ -289,6 +300,7 @@ export default function JudoPlayer() {
                 </div>
               )}
             </div>
+
             <div>
               <div style={{fontSize:'12px', color:'#888', marginBottom:'5px'}}>RESULTADO (SALVAR & PLAY)</div>
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
@@ -298,6 +310,7 @@ export default function JudoPlayer() {
                 <button onClick={() => confirmarEContinuar('IPPON')} style={{padding: '15px', background: '#fff', color: '#000', border: '4px solid #ef4444', borderRadius: '8px', fontWeight: 'bold', fontSize:'18px'}}>IPPON</button>
               </div>
             </div>
+
           </div>
         </div>
       )}
