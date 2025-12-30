@@ -36,11 +36,11 @@ export default function JudoPlayer() {
   const [registroPendente, setRegistroPendente] = useState<any>(null);
 
   const [eventos, setEventos] = useState(() => {
-    const salvos = localStorage.getItem('jaap_dados_v8'); // v8
+    const salvos = localStorage.getItem('smaartpro_db'); // Alterado para nova marca
     return salvos ? JSON.parse(salvos) : [];
   });
 
-  useEffect(() => { localStorage.setItem('jaap_dados_v8', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db', JSON.stringify(eventos)); }, [eventos]);
 
   // Placar
   const placar = useMemo(() => {
@@ -145,24 +145,29 @@ export default function JudoPlayer() {
     eventos.forEach((ev: any) => {
       csv += `${ev.tempo.toFixed(3).replace('.', ',')},${ev.categoria},${ev.especifico || ev.tipo || '-'},${ev.resultado || '-'},${ev.atleta},${ev.lado},${ev.grupo || ev.tipo}\n`;
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `jaap_pro_luta.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_analise_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
 
   // --- CORREÇÃO DA BORDA ---
   const getCorBorda = (ev: any) => {
-    // 1. Fluxo (Hajime/Mate) sempre cinza
     if (ev.categoria === 'FLUXO') return '#555';
-    
-    // 2. Agora PUNIÇÃO também obedece a cor do atleta, não é mais vermelha fixa
-    if (ev.atleta === 'AZUL') return '#2563eb'; // Borda Azul
-    if (ev.atleta === 'BRANCO') return '#ffffff'; // Borda Branca
-    
-    return '#555'; // Fallback
+    if (ev.atleta === 'AZUL') return '#2563eb'; 
+    if (ev.atleta === 'BRANCO') return '#ffffff'; 
+    return '#555';
   };
 
   return (
     <div style={{ maxWidth: '1600px', width: '95%', margin: '0 auto', fontFamily: 'sans-serif', color: 'white', paddingBottom: '100px', position: 'relative' }}>
       
+      {/* NOVA MARCA: SMAART|PRO */}
+      <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
+        <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '900', letterSpacing: '-1px' }}>
+          <span style={{ color: '#ef4444' }}>SMAART</span>
+          <span style={{ color: '#666', margin: '0 8px', fontWeight: '300' }}>|</span>
+          <span style={{ color: 'white' }}>PRO</span>
+        </h1>
+      </div>
+
       {/* MODAL */}
       {modalAberto && (
         <div style={{
@@ -273,7 +278,7 @@ export default function JudoPlayer() {
               <div key={ev.id} style={{ 
                 padding: '12px', marginBottom: '5px', borderRadius: '6px', 
                 background: '#1f2937', 
-                borderLeft: `5px solid ${getCorBorda(ev)}`, // BORDA CORRIGIDA AQUI
+                borderLeft: `5px solid ${getCorBorda(ev)}`, 
                 display:'flex', alignItems:'center', justifyContent:'space-between' 
               }}>
                 <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
