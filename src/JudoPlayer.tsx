@@ -14,7 +14,7 @@ const THEME = {
   danger: '#ef4444',    // Red 500
   success: '#10b981',   // Emerald 500
   warning: '#eab308',   // Yellow 500
-  surface: '#020617',   // Slate 950 (Inputs/Deep bg)
+  surface: '#020617',   // Slate 950
 };
 
 // --- BANCO DE DADOS ---
@@ -79,7 +79,7 @@ export default function JudoPlayer() {
 
   useEffect(() => { localStorage.setItem('smaartpro_db_v6', JSON.stringify(eventos)); }, [eventos]);
 
-  // --- HANDLERS (Resize, Keyboard) ---
+  // --- HANDLERS ---
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 800);
     window.addEventListener('resize', handleResize);
@@ -232,14 +232,34 @@ export default function JudoPlayer() {
   }, [eventos, currentVideo.name]);
 
   const formatTime = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
+  
+  // --- FUNÇÃO CORRIGIDA PARA MÚLTIPLOS VÍDEOS ---
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Video;Tempo Video;Tempo Luta;Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
+    
+    // Agrupa eventos por vídeo para achar o 'Zero' de cada um
+    const eventosPorVideo: Record<string, any[]> = {};
     eventos.forEach((ev: any) => {
-      const tr = (ev.tempo - fightStartTime).toFixed(1).replace('.', ',');
-      csv += `${ev.videoId};${ev.tempo.toFixed(3).replace('.', ',')};${tr};${ev.categoria};${ev.especifico || ev.tipo || '-'};${ev.resultado || '-'};${ev.atleta};${ev.lado};${ev.grupo || ev.tipo}\n`;
+      if (!eventosPorVideo[ev.videoId]) eventosPorVideo[ev.videoId] = [];
+      eventosPorVideo[ev.videoId].push(ev);
     });
+
+    Object.keys(eventosPorVideo).forEach(vidName => {
+      const evs = eventosPorVideo[vidName].sort((a:any,b:any) => a.tempo - b.tempo);
+      
+      // Acha o primeiro Hajime deste vídeo específico
+      const firstHajime = evs.find((e:any) => e.categoria === 'FLUXO' && e.tipo === 'HAJIME');
+      const zeroTime = firstHajime ? firstHajime.tempo : 0;
+
+      evs.forEach((ev:any) => {
+        const tr = (ev.tempo - zeroTime).toFixed(1).replace('.', ',');
+        csv += `${ev.videoId};${ev.tempo.toFixed(3).replace('.', ',')};${tr};${ev.categoria};${ev.especifico || ev.tipo || '-'};${ev.resultado || '-'};${ev.atleta};${ev.lado};${ev.grupo || ev.tipo}\n`;
+      });
+    });
+
     const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_analytics_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
+  
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.cardBorder; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
 
   // ESTILOS COMUNS (Cards)
@@ -254,7 +274,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <MonitorPlay size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v6.0</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v6.1</span>
         </h1>
         
         <div style={{display:'flex', gap:'10px'}}>
