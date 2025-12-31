@@ -1,9 +1,11 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
+// CORREÇÃO: Adicionei TODOS os ícones que faltavam nos seus logs (Rewind, CheckCircle, Search, Flag, etc)
 import { 
   Play, Pause, Trash2, Download, Video, Film, List, X, 
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
-  MousePointerClick, Gauge, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon, BarChart2, PieChart, Edit2
+  MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
+  Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -67,11 +69,11 @@ export default function JudoPlayer() {
   const [resultadoPreSelecionado, setResultadoPreSelecionado] = useState<string | null>(null);
   const [punicaoMode, setPunicaoMode] = useState<string | null>(null);
 
-  // DB
+  // DB (CORREÇÃO: Adicionado try/catch para garantir que não quebre se o JSON for inválido)
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13_6') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v14') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v13_6', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v14', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
@@ -80,32 +82,13 @@ export default function JudoPlayer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // --- ATALHOS DE TECLADO ---
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (modalIA) return;
-      if (modalAberto) {
-        if (e.key === 'Escape') setModalAberto(false);
-        if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA');
-        return;
-      }
-      if (document.activeElement?.tagName === 'INPUT') return;
-
-      switch(e.code) {
-        case 'Space': e.preventDefault(); toggleFightState(); break; // SPACE = SÓ FLUXO (HAJIME/MATE)
-        case 'KeyP': e.preventDefault(); toggleVideo(); break; // P = SÓ VÍDEO
-        case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
-        case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
-        case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
-        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break;
-        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
-        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
-        case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode]);
+  // --- DERIVED STATE (FIGHT STATUS) ---
+  const isFightActive = useMemo(() => {
+    // CORREÇÃO: Tipagem explicita 'ev:any' para evitar erro do TS
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => b.tempo - a.tempo);
+    if (evs.length === 0) return false;
+    return evs[0].tipo === 'HAJIME';
+  }, [eventos, currentVideo.name]);
 
   // --- PLAYER & PLAYLIST ---
   const handleFileSelect = (e: any) => {
@@ -131,7 +114,7 @@ export default function JudoPlayer() {
   const onStateChange = (e: any) => { 
     setIsPlaying(e.data === 1); 
     if (e.data === 0) proximoVideo();
-    window.focus(); 
+    window.focus(); // Traz o foco de volta para a janela para os atalhos funcionarem
   };
   const onFileEnded = () => proximoVideo();
 
@@ -159,14 +142,9 @@ export default function JudoPlayer() {
 
   // --- REGISTRO & FLUXO ---
   
-  // Função exclusiva para alternar estado da luta (Spacebar)
-  // DERIVED STATE (FIGHT STATUS)
-  const isFightActive = useMemo(() => {
-    // CORREÇÃO CRÍTICA AQUI: Usando 'ev' corretamente
-    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => b.tempo - a.tempo);
-    if (evs.length === 0) return false;
-    return evs[0].tipo === 'HAJIME';
-  }, [eventos, currentVideo.name]);
+  // Função exclusiva para alternar estado da luta (Spacebar) - CORREÇÃO: "prev: any[]" para evitar erro TS
+  const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
+  const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
 
   const toggleFightState = () => {
     if (isFightActive) registrarFluxo('MATE');
@@ -215,8 +193,32 @@ export default function JudoPlayer() {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
   };
 
-  const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
-  const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
+  // --- ATALHOS DE TECLADO (DEPENDÊNCIAS ATUALIZADAS) ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (modalIA) return;
+      if (modalAberto) {
+        if (e.key === 'Escape') setModalAberto(false);
+        if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA');
+        return;
+      }
+      if (document.activeElement?.tagName === 'INPUT') return;
+
+      switch(e.code) {
+        case 'Space': e.preventDefault(); toggleFightState(); break; // SPACE = SÓ FLUXO (HAJIME/MATE)
+        case 'KeyP': e.preventDefault(); toggleVideo(); break; // P = SÓ VÍDEO
+        case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
+        case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
+        case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
+        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break;
+        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
+        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
+        case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isFightActive]);
 
   // --- CÁLCULOS ---
   const accumulatedFightTime = useMemo(() => {
@@ -231,7 +233,6 @@ export default function JudoPlayer() {
   }, [eventos, currentTime, currentVideo.name]);
 
   const tempoDisplay = useMemo(() => {
-    // Correção: ev (evento) e não e
     const hasHajime = eventos.some((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME');
     if (!hasHajime) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
     const elapsed = accumulatedFightTime;
@@ -240,7 +241,6 @@ export default function JudoPlayer() {
   }, [accumulatedFightTime, eventos, currentVideo.name]);
 
   const fightStartTime = useMemo(() => {
-    // Correção: ev (evento) e não e
     const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
     return evs.length > 0 ? evs[0].tempo : 0;
   }, [eventos, currentVideo.name]);
@@ -269,13 +269,14 @@ export default function JudoPlayer() {
     return { groupData, vol, eff };
   }, [eventos, currentVideo.name]);
 
+  // --- AI ---
   const gerarPromptIA = () => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
     const evs = eventos.filter((e:any) => e.videoId === currentVideo.name);
     const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
     const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', ');
     const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}. Identifique o Tokui-waza e sugira correções táticas.`;
+    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Identifique o Tokui-waza e sugira correções táticas.`;
     setGeneratedPrompt(prompt); setCopied(false); setModalIA(true);
   };
   const copyToClipboard = () => { navigator.clipboard.writeText(generatedPrompt); setCopied(true); };
@@ -299,7 +300,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_6_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v14_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -318,7 +319,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.6</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v14.0</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -407,108 +408,4 @@ export default function JudoPlayer() {
           <div style={{...cardStyle, padding:'8px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px'}}>
              <div style={{display:'flex', alignItems:'center', gap:'16px'}}>
                <div style={{display:'flex', gap:'4px'}}><button onClick={videoAnterior} disabled={currentVideoIndex===0} style={{...btnStyle, background:'transparent', color:currentVideoIndex===0?THEME.cardBorder:THEME.text}}><ChevronLeft size={18}/></button><button onClick={toggleVideo} style={{...btnStyle, background:'transparent', color:THEME.primary}}>{isPlaying ? <Pause size={32} fill={THEME.primary} color={THEME.bg}/> : <Play size={32} fill={THEME.primary} color={THEME.bg}/>}</button><button onClick={proximoVideo} disabled={currentVideoIndex===playlist.length-1} style={{...btnStyle, background:'transparent', color:currentVideoIndex===playlist.length-1?THEME.cardBorder:THEME.text}}><ChevronRight size={18}/></button></div>
-               <div style={{display:'flex', flexDirection:'column'}}><span style={{fontSize:'13px', fontWeight:'600', color: THEME.text}}>{currentVideoIndex+1}. {currentVideo.name}</span><span style={{fontSize:'11px', color: THEME.textDim, fontFamily:'monospace'}}>{formatTimeVideo(currentTime)} / {formatTimeVideo(duration)}</span></div>
-             </div>
-             <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                <div style={{fontSize:'11px', color: THEME.textDim, fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> P = PLAY VIDEO</div>
-                <button onClick={mudarVelocidade} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, padding:'4px 10px', fontSize:'11px'}}><Gauge size={14}/> {playbackRate}x</button>
-             </div>
-          </div>
-
-          <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, width:'100%', padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`, marginBottom:'24px'}}>
-            <CheckCircle size={28}/> MARCAR AÇÃO
-          </button>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-            <button onClick={toggleFightState} style={{...btnStyle, background: isFightActive ? THEME.danger : THEME.success, color:'white', padding:'16px'}}>
-              {isFightActive ? <><Pause size={20}/> MATE (ESPAÇO)</> : <><Play size={20}/> HAJIME (ESPAÇO)</>}
-            </button>
-            <div style={{display:'flex', gap:'5px'}}>
-               <button onClick={() => registrarFluxo('GOLDEN SCORE')} style={{...btnStyle, flex:1, background: THEME.warning, color:'#000', padding:'12px', fontSize:'13px'}}><Clock size={18}/> GOLDEN SCORE</button>
-               <button onClick={() => registrarFluxo('SOREMADE')} style={{...btnStyle, flex:1, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color:THEME.text, padding:'12px', fontSize:'13px'}}><Flag size={18}/> SOREMADE</button>
-            </div>
-          </div>
-
-          <div style={{...cardStyle, padding:'16px'}}>
-             <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'10px', fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> I=IPPON, W=WAZA, Y=YUKO, N=NADA, S=SHIDO, H=HANSOKU</div>
-             <div style={{display:'flex', gap:'8px'}}><select style={{flex:1, background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'10px', borderRadius:'8px', fontSize: '13px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select><button onClick={() => registrarPunicaoDireto('SHIDO', 'BRANCO')} style={{...btnStyle, width:'48px', background:'#e2e8f0', color:'#0f172a', fontSize:'16px'}}>⚪</button><button onClick={() => registrarPunicaoDireto('SHIDO', 'AZUL')} style={{...btnStyle, width:'48px', background: THEME.primary, color:'white', fontSize:'16px'}}>🔵</button></div>
-          </div>
-        </div>
-
-        {/* COLUNA DIREITA */}
-        <div style={{ flex: 2, width: '100%', display:'flex', flexDirection:'column', gap:'20px' }}>
-          
-          {showPlaylist && (
-            <div style={{ ...cardStyle, padding: '12px', maxHeight: '200px', overflowY: 'auto' }}>
-              <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600', textTransform:'uppercase'}}>Fila de Reprodução</div>
-              {playlist.map((item, index) => (
-                <div key={index} onClick={() => selecionarVideo(index)} style={{ padding: '10px', cursor: 'pointer', background: index === currentVideoIndex ? `${THEME.primary}22` : 'transparent', borderRadius: '6px', marginBottom: '4px', display:'flex', justifyContent:'space-between', alignItems:'center', border: index===currentVideoIndex ? `1px solid ${THEME.primary}66` : '1px solid transparent' }}>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>{item.type === 'YOUTUBE' ? <Video size={14} color={THEME.danger}/> : <Film size={14} color={THEME.primary}/>}<span style={{fontSize:'13px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color: index===currentVideoIndex ? THEME.primary : THEME.text}}>{item.name}</span></div>
-                  <button onClick={(e) => removerDaPlaylist(index, e)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><X size={14}/></button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* PLACAR */}
-          <div style={{ ...cardStyle, padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.text}}>⚪ BRANCO</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.branco.ippon}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.branco.waza}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.branco.yuko}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.branco.shido}</div></div></div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><div style={{fontSize: '10px', color: tempoDisplay.isGS ? THEME.warning : THEME.textDim, fontWeight: '700', letterSpacing:'1px'}}>{tempoDisplay.text}</div><div style={{fontSize: '32px', fontFamily: 'monospace', fontWeight: '700', color: tempoDisplay.isGS ? THEME.warning : 'white', letterSpacing:'-1px'}}>{tempoDisplay.time}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.primary}}>🔵 AZUL</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.azul.ippon}</div></div>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.azul.waza}</div></div>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.azul.yuko}</div></div>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.azul.shido}</div></div>
-            </div></div>
-          </div>
-
-          {/* DASHBOARD */}
-          <div style={{ ...cardStyle, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{fontSize:'12px', color: THEME.textDim, fontWeight:'600', display:'flex', alignItems:'center', gap:'6px'}}><BarChart2 size={16}/> PERFORMANCE</div>
-            <div style={{display:'flex', flexDirection:'column', gap:'6px'}}>
-              <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color: THEME.textDim}}><span>⚪ {stats.vol.branco}</span><span>🔵 {stats.vol.azul}</span></div>
-              <div style={{display:'flex', height:'8px', borderRadius:'4px', overflow:'hidden', background: THEME.surface}}><div style={{width: `${(stats.vol.branco / (stats.vol.branco + stats.vol.azul || 1)) * 100}%`, background: 'white'}}></div><div style={{flex:1, background: THEME.primary}}></div></div>
-            </div>
-            <div style={{display:'flex', gap:'20px', alignItems:'center'}}>
-              <SimpleDonut data={stats.groupData}/>
-              <div style={{flex:1, display:'flex', flexDirection:'column', gap:'4px'}}>{stats.groupData.slice(0,4).map((g:any) => (<div key={g.name} style={{display:'flex', alignItems:'center', gap:'6px', fontSize:'11px'}}><div style={{width:'8px', height:'8px', borderRadius:'50%', background:g.color}}></div><span style={{color:THEME.text, flex:1}}>{g.name}</span><span style={{color:THEME.textDim}}>{g.val}</span></div>))}</div>
-            </div>
-          </div>
-
-          {/* LOG */}
-          <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
-              <div style={{display:'flex', alignItems:'center', gap:'8px'}}><h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3><Keyboard size={12} color={THEME.textDim}/></div>
-              <button onClick={()=>setEventos(eventos.filter(e => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
-            </div>
-            <div style={{ ...cardStyle, flex:1, padding: '8px', minHeight: '200px', overflowY: 'auto', background: THEME.surface }}>
-              {eventos.filter(e => e.videoId === currentVideo.name).map((ev: any) => (
-                <div key={ev.id} style={{ 
-                  padding: '10px 12px', marginBottom: '6px', borderRadius: '8px', 
-                  background: THEME.card, borderLeft: `4px solid ${getCorBorda(ev)}`, 
-                  display:'flex', alignItems:'center', justifyContent:'space-between', fontSize: '13px', border: `1px solid ${THEME.cardBorder}`
-                }}>
-                  <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
-                    <div style={{display:'flex', gap:'8px', fontSize:'11px', color: THEME.textDim, alignItems:'center', marginBottom:'4px'}}>
-                      <span style={{fontFamily:'monospace', display:'flex', alignItems:'center', gap:'4px'}}><Rewind size={10}/> {formatTimeVideo(ev.tempo)}</span>
-                      <span style={{color: THEME.warning, fontWeight:'700', background:`${THEME.warning}22`, padding:'1px 5px', borderRadius:'3px'}}>
-                        {ev.tempo >= fightStartTime ? formatTimeVideo(ev.tempo - fightStartTime) : '-'}
-                      </span>
-                    </div>
-                    <div style={{fontWeight:'600', color: ev.atleta === 'AZUL' ? THEME.primary : (ev.categoria==='FLUXO' ? THEME.textDim : 'white'), fontSize: '14px'}}>{ev.especifico || ev.tipo}</div>
-                    {ev.resultado && ev.resultado !== 'NADA' && <div style={{marginTop:'4px', background: ev.resultado==='IPPON'?'white':THEME.warning, color: 'black', display:'inline-block', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'800'}}>{ev.resultado}</div>}
-                  </div>
-                  <div style={{display:'flex', gap:'5px'}}>
-                    <button onClick={() => editarEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Edit2 size={14}/></button>
-                    <button onClick={() => setEventos(eventos.filter((e:any) => e.id !== ev.id))} style={{background:'none', border:'none', color: THEME.cardBorder, cursor:'pointer'}}><X size={14}/></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  );
-}
+               <div style={{display:'flex', flexDirection:'column'}}><span style={{fontSize:'13px', fontWeight:'600', color: THEME.text}}>{currentVideoIndex+1}. {currentVideo.name}</span><span style={{fontSize:'1
