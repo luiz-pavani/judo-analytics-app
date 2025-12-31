@@ -31,6 +31,7 @@ const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 
 export default function JudoPlayer() {
+  const mainContainerRef = useRef<HTMLDivElement>(null); // Ref para manter o foco
   const youtubePlayerRef = useRef<any>(null);
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
@@ -65,14 +66,13 @@ export default function JudoPlayer() {
   const [tempoCapturado, setTempoCapturado] = useState(0);
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [resultadoPreSelecionado, setResultadoPreSelecionado] = useState<string | null>(null);
-  
   const [punicaoMode, setPunicaoMode] = useState<string | null>(null);
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13_1') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13_2') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v13_1', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v13_2', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
@@ -84,20 +84,22 @@ export default function JudoPlayer() {
   // --- ATALHOS DE TECLADO ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignora atalhos se estiver digitando em inputs (exceto se for o modal)
+      if (document.activeElement?.tagName === 'INPUT' && !modalAberto) return;
+
       if (modalIA) return;
       if (modalAberto) {
         if (e.key === 'Escape') setModalAberto(false);
         if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA');
         return;
       }
-      if (document.activeElement?.tagName === 'INPUT') return;
 
       switch(e.code) {
         case 'Space': e.preventDefault(); toggleFlowAndLog(); break;
         case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
         case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
         case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
-        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break; // NOVO: NADA
+        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break;
         case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
         case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
         case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
@@ -128,7 +130,13 @@ export default function JudoPlayer() {
   const removerDaPlaylist = (index: number, e: any) => { e.stopPropagation(); const nova = playlist.filter((_,i)=>i!==index); if(nova.length) setPlaylist(nova); if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); };
 
   const onReady = (e: any) => { youtubePlayerRef.current = e.target; setDuration(e.target.getDuration()); };
-  const onStateChange = (e: any) => { setIsPlaying(e.data === 1); if (e.data === 0) proximoVideo(); };
+  
+  // FIX: Force focus back to window on state change to enable shortcuts
+  const onStateChange = (e: any) => { 
+    setIsPlaying(e.data === 1); 
+    if (e.data === 0) proximoVideo();
+    window.focus(); // Recupera o foco do Iframe
+  };
   const onFileEnded = () => proximoVideo();
 
   useEffect(() => {
@@ -286,7 +294,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_1_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_2_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -298,14 +306,14 @@ export default function JudoPlayer() {
   const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' };
 
   return (
-    <div style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box' }}>
+    <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
       
       {/* HEADER */}
       <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.1</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.2</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -322,7 +330,7 @@ export default function JudoPlayer() {
 
       {/* --- MODAL IA --- */}
       {modalIA && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '600px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h2 style={{margin:0, color: '#a855f7', fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Bot size={24}/> RELATÓRIO INTELIGENTE</h2><button onClick={() => setModalIA(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button></div>
             <div style={{background: THEME.surface, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, fontSize:'12px', fontFamily:'monospace', whiteSpace:'pre-wrap', maxHeight:'300px', overflowY:'auto', marginBottom:'20px'}}>{generatedPrompt}</div>
@@ -385,6 +393,9 @@ export default function JudoPlayer() {
         {/* COLUNA ESQUERDA */}
         <div style={{ flex: 3, width: '100%' }}>
           <div style={{ ...cardStyle, position: 'relative', paddingTop: '56.25%', width: '100%', marginBottom: '20px' }}>
+               {/* OVERLAY DE FOCO */}
+               <div onClick={toggleFlowAndLog} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>
+               
                {currentVideo.type === 'YOUTUBE' ? (<YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }} />) : (<div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>)}
           </div>
 
