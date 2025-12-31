@@ -1,50 +1,19 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
 import { 
-  Play, 
-  Pause, 
-  Trash2, 
-  Download, 
-  Video, 
-  Film, 
-  List, 
-  X, 
-  Clock, 
-  Flag, 
-  CheckCircle, 
-  ChevronLeft, 
-  ChevronRight, 
-  Search, 
-  MousePointerClick, 
-  Gauge, 
-  Youtube, 
-  Rewind, 
-  BarChart2, 
-  PieChart,
-  Edit2 // Novo ícone para edição
+  Play, Pause, Trash2, Download, Video, Film, List, X, 
+  Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
+  MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
+  Edit2, Bot, Copy, Check // Novos ícones para IA
 } from 'lucide-react';
 
-// ============================================================================
-// 1. CONFIGURAÇÃO VISUAL
-// ============================================================================
+// --- THEME SYSTEM ---
 const THEME = {
-  bg: '#0f172a',        
-  card: '#1e293b',      
-  cardBorder: '#334155',
-  text: '#f8fafc',      
-  textDim: '#94a3b8',   
-  primary: '#3b82f6',   
-  primaryHover: '#2563eb',
-  danger: '#ef4444',    
-  success: '#10b981',   
-  warning: '#eab308',   
-  surface: '#020617',   
-  neutral: '#64748b' // Nova cor para Fluxo (Cinza)
+  bg: '#0f172a', card: '#1e293b', cardBorder: '#334155', text: '#f8fafc', textDim: '#94a3b8',
+  primary: '#3b82f6', primaryHover: '#2563eb', danger: '#ef4444', success: '#10b981', warning: '#eab308', surface: '#020617', neutral: '#64748b'
 };
 
-// ============================================================================
-// 2. BANCO DE DADOS
-// ============================================================================
+// --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
 const DB_GOLPES: Record<string, string> = {
   "seoi-nage": "TE-WAZA", "ippon-seoi-nage": "TE-WAZA", "seoi-otoshi": "TE-WAZA", "tai-otoshi": "TE-WAZA", "kata-guruma": "TE-WAZA", "sukui-nage": "TE-WAZA", "obi-otoshi": "TE-WAZA", "uki-otoshi": "TE-WAZA", "sumi-otoshi": "TE-WAZA", "yama-arashi": "TE-WAZA", "obi-tori-gaeshi": "TE-WAZA", "morote-gari": "TE-WAZA", "kuchiki-taoshi": "TE-WAZA", "kibisu-gaeshi": "TE-WAZA", "uchi-mata-sukashi": "TE-WAZA", "kouchi-gaeshi": "TE-WAZA",
@@ -67,7 +36,7 @@ export default function JudoPlayer() {
   const fileInputRef = useRef<any>(null);
   const inputRef = useRef<any>(null);
 
-  // --- STATES ---
+  // STATE: VIDEO & PLAYLIST
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([{ id: 'kU_gjfnyu6A', type: 'YOUTUBE', name: 'Final Paris 2025' }]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showPlaylist, setShowPlaylist] = useState(false);
@@ -80,7 +49,7 @@ export default function JudoPlayer() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
 
-  // Contexto
+  // STATE: ANALYTICS
   const [atletaAtual, setAtletaAtual] = useState('BRANCO'); 
   const [ladoAtual, setLadoAtual] = useState('DIREITA');   
   const [nomeGolpe, setNomeGolpe] = useState('');          
@@ -88,22 +57,25 @@ export default function JudoPlayer() {
   const [sugestoes, setSugestoes] = useState<string[]>([]);
   const [motivoShido, setMotivoShido] = useState(DB_SHIDOS[0]);
 
-  // Modal & Edição
+  // STATE: MODALS (Registro & IA)
   const [modalAberto, setModalAberto] = useState(false);
+  const [modalIA, setModalIA] = useState(false);
+  const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const [registroPendente, setRegistroPendente] = useState<any>(null);
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
   const [modalGrupo, setModalGrupo] = useState('TE-WAZA');
   const [tempoCapturado, setTempoCapturado] = useState(0);
-  
-  // NOVO: ID do evento sendo editado (null se for novo)
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v10') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v11') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v10', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v11', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
@@ -113,10 +85,15 @@ export default function JudoPlayer() {
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => { if (e.code === 'Space' && !modalAberto) { e.preventDefault(); iniciarRegistroRapido(); }};
+    const handleKeyDown = (e: KeyboardEvent) => { 
+      if (e.code === 'Space' && !modalAberto && !modalIA) { 
+        e.preventDefault(); 
+        iniciarRegistroRapido(); 
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, isPlaying, currentVideo.type]);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type]);
 
   // Playlist & Video Logic
   const handleFileSelect = (e: any) => {
@@ -159,58 +136,24 @@ export default function JudoPlayer() {
   const irPara = (t: number) => { const st = Math.max(0, t - 2); if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } setCurrentTime(st); };
   const mudarVelocidade = () => { const r = [0.25, 0.5, 1.0, 1.5, 2.0]; const n = r[(r.indexOf(playbackRate)+1)%r.length]; setPlaybackRate(n); if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); else filePlayerRef.current.playbackRate = n; };
 
-  // --- REGISTRO E EDIÇÃO ---
-  
+  // --- REGISTRO ---
   const iniciarRegistroRapido = () => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause();
-    
     let t = currentTime;
     if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); 
     else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
-    
-    // Reset para novo registro
-    setEditingEventId(null);
-    setTempoCapturado(t);
-    setModalAtleta('BRANCO'); // Default
-    setModalNome('');
-    setModalAberto(true);
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setEditingEventId(null); setTempoCapturado(t); setModalAtleta('BRANCO'); setModalNome(''); setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   const editarEvento = (ev: any) => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause();
-    
-    setEditingEventId(ev.id);
-    setTempoCapturado(ev.tempo); // Mantém o tempo original
-    setModalAtleta(ev.atleta);
-    setModalLado(ev.lado);
-    setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico);
-    setModalGrupo(ev.grupo || 'TE-WAZA');
-    
-    setModalAberto(true);
+    setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico); setModalGrupo(ev.grupo || 'TE-WAZA'); setModalAberto(true);
   };
 
   const confirmarEContinuar = (resultado: string) => {
-    const dadosEvento = {
-      videoId: currentVideo.name,
-      tempo: tempoCapturado,
-      categoria: 'TECNICA',
-      grupo: modalGrupo,
-      especifico: modalNome || "Técnica Geral",
-      atleta: modalAtleta,
-      lado: modalLado,
-      corTecnica: CORES_GRUPOS[modalGrupo],
-      resultado: resultado
-    };
-
-    if (editingEventId) {
-      // ATUALIZAR EXISTENTE
-      setEventos(eventos.map((ev: any) => ev.id === editingEventId ? { ...ev, ...dadosEvento } : ev));
-    } else {
-      // CRIAR NOVO
-      setEventos([{ id: Date.now(), ...dadosEvento }, ...eventos]);
-    }
-
+    const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'TECNICA', grupo: modalGrupo, especifico: modalNome || "Técnica Geral", atleta: modalAtleta, lado: modalLado, corTecnica: CORES_GRUPOS[modalGrupo], resultado: resultado };
+    if (editingEventId) setEventos(eventos.map((ev: any) => ev.id === editingEventId ? { ...ev, ...dados } : ev));
+    else setEventos([{ id: Date.now(), ...dados }, ...eventos]);
     setModalAberto(false);
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
   };
@@ -218,41 +161,22 @@ export default function JudoPlayer() {
   const registrarFluxo = (tipo: string) => setEventos([{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...eventos]);
   const registrarPunicao = (tipo: string, atleta: string) => setEventos([{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...eventos]);
 
-  // --- CÁLCULOS E TEMPO ---
+  // --- ANALYTICS & AI ---
   const fightStartTime = useMemo(() => {
     const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
     return evs.length > 0 ? evs[0].tempo : 0;
   }, [eventos, currentVideo.name]);
 
-  // NOVO CÁLCULO DE CRONÔMETRO (4 MIN)
   const tempoDisplay = useMemo(() => {
-    // Tempo corrido desde o primeiro Hajime
     const lutaRolando = currentTime >= fightStartTime;
     if (!lutaRolando) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
-
-    // Descontar tempo parado (MATE -> HAJIME) - Implementação simplificada:
-    // Para simplificar sem complicar demais a lógica de pause, vamos assumir o tempo corrido do vídeo relativo ao primeiro Hajime.
-    // Em uma versão futura v11, podemos somar os intervalos exatos.
-    
-    const elapsedSeconds = currentTime - fightStartTime;
-    const REGULAR_TIME = 240; // 4 minutos
-
-    if (elapsedSeconds <= REGULAR_TIME) {
-      // CONTAGEM REGRESSIVA
-      const remaining = REGULAR_TIME - elapsedSeconds;
-      return { 
-        text: "TEMPO REGULAR", 
-        time: `${Math.floor(remaining/60)}:${Math.floor(remaining%60).toString().padStart(2,'0')}`, 
-        isGS: false 
-      };
+    const elapsed = currentTime - fightStartTime;
+    if (elapsed <= 240) {
+      const rem = 240 - elapsed;
+      return { text: "TEMPO REGULAR", time: `${Math.floor(rem/60)}:${Math.floor(rem%60).toString().padStart(2,'0')}`, isGS: false };
     } else {
-      // GOLDEN SCORE (CRESCENTE)
-      const gsTime = elapsedSeconds - REGULAR_TIME;
-      return { 
-        text: "GOLDEN SCORE", 
-        time: `${Math.floor(gsTime/60)}:${Math.floor(gsTime%60).toString().padStart(2,'0')}`, 
-        isGS: true 
-      };
+      const gs = elapsed - 240;
+      return { text: "GOLDEN SCORE", time: `${Math.floor(gs/60)}:${Math.floor(gs%60).toString().padStart(2,'0')}`, isGS: true };
     }
   }, [currentTime, fightStartTime]);
 
@@ -282,6 +206,51 @@ export default function JudoPlayer() {
     return { groupData, vol, eff };
   }, [eventos, currentVideo.name]);
 
+  // --- AI PROMPT GENERATOR ---
+  const gerarPromptIA = () => {
+    // Coleta dados
+    const evs = eventos.filter((e:any) => e.videoId === currentVideo.name);
+    const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
+    const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', ');
+    const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
+    
+    const prompt = `
+Atue como um analista de desempenho olímpico de Judô. Analise os dados estatísticos abaixo da luta:
+
+[CONTEXTO]
+Vídeo: ${currentVideo.name}
+Tempo Total: ${formatTimeVideo(tempoDeLuta.total)} (Golden Score: ${tempoDeLuta.isGS ? 'SIM' : 'NÃO'})
+
+[BRANCO]
+Pontuação: Ippon=${placar.branco.ippon}, Waza-ari=${placar.branco.waza}, Shido=${placar.branco.shido}
+Volume de Ataque: ${stats.vol.branco} tentativas.
+Eficiência: ${stats.eff.branco}%
+Golpes Tentados: ${tecnicasBranco || 'Nenhum'}
+Punições: ${shidosBranco || 'Nenhuma'}
+
+[AZUL]
+Pontuação: Ippon=${placar.azul.ippon}, Waza-ari=${placar.azul.waza}, Shido=${placar.azul.shido}
+Volume de Ataque: ${stats.vol.azul} tentativas.
+Eficiência: ${stats.eff.azul}%
+Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
+
+[TAREFA]
+1. Faça uma análise tática resumida: Quem dominou o kumi-kata? Quem foi mais agressivo?
+2. Identifique o Tokui-waza (golpe principal) aparente de cada um.
+3. Aponte 2 falhas táticas baseadas nas punições ou ataques falhos.
+4. Sugira 1 exercício específico para o atleta que perdeu melhorar seu desempenho.
+`.trim();
+
+    setGeneratedPrompt(prompt);
+    setCopied(false);
+    setModalIA(true);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedPrompt);
+    setCopied(true);
+  };
+
   useEffect(() => {
     if (modalNome.length > 1) {
       const m = Object.keys(DB_GOLPES).filter(k => k.toLowerCase().includes(modalNome.toLowerCase()));
@@ -304,15 +273,10 @@ export default function JudoPlayer() {
           csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`;
         });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v10_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v11_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
 
-  // Cores atualizadas: Neutro é cinza agora
-  const getCorBorda = (ev: any) => { 
-    if (ev.categoria === 'FLUXO') return THEME.neutral; 
-    if (ev.atleta === 'AZUL') return THEME.primary; 
-    return '#ffffff'; 
-  };
+  const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
 
   const SimpleDonut = ({ data }: { data: any[] }) => {
     let cumPct = 0;
@@ -320,9 +284,7 @@ export default function JudoPlayer() {
     const gradient = `conic-gradient(${data.map(d => { const str = `${d.color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`;
     return (
       <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: gradient}}>
-        <div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}>
-           <PieChart size={24} color={THEME.textDim}/>
-        </div>
+        <div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div>
       </div>
     );
   };
@@ -338,7 +300,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v10.0</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v11.0 AI</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -347,19 +309,40 @@ export default function JudoPlayer() {
             <button onClick={() => fileInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'6px 12px', fontSize:'12px'}}>+ ARQ</button>
             <input type="file" ref={fileInputRef} style={{display:'none'}} multiple accept="video/*" onChange={handleFileSelect} />
           </div>
+          {/* BOTÃO IA NOVO */}
+          <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI REPORT</button>
+          
           <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
           <button onClick={baixarCSV} style={{...btnStyle, background: THEME.success, color:'white', padding:'8px 16px', fontSize: '13px'}}><Download size={16}/> CSV</button>
         </div>
       </div>
 
-      {/* --- MODAL --- */}
+      {/* --- MODAL IA REPORT (NOVO) --- */}
+      {modalIA && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ ...cardStyle, width: '100%', maxWidth: '600px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
+              <h2 style={{margin:0, color: '#a855f7', fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Bot size={24}/> RELATÓRIO INTELIGENTE</h2>
+              <button onClick={() => setModalIA(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
+            </div>
+            <div style={{background: THEME.surface, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, fontSize:'12px', fontFamily:'monospace', whiteSpace:'pre-wrap', maxHeight:'300px', overflowY:'auto', marginBottom:'20px'}}>
+              {generatedPrompt}
+            </div>
+            <div style={{display:'flex', justifyContent:'flex-end'}}>
+              <button onClick={copyToClipboard} style={{...btnStyle, padding: '12px 24px', background: copied ? THEME.success : '#a855f7', color: 'white', fontSize:'14px'}}>
+                {copied ? <><Check size={18}/> COPIADO!</> : <><Copy size={18}/> COPIAR PARA CHATGPT</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL REGISTRO --- */}
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
-              <h2 style={{margin:0, color: THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
-                <MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR'}
-              </h2>
+              <h2 style={{margin:0, color: THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR'}</h2>
               <button onClick={() => setModalAberto(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
@@ -421,33 +404,11 @@ export default function JudoPlayer() {
             </div>
           )}
 
-          {/* PLACAR ATUALIZADO (ORDEM ESQUERDA -> DIREITA PARA AMBOS) */}
+          {/* PLACAR */}
           <div style={{ ...cardStyle, padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-            {/* BRANCO (I-W-Y-S) */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: `1px solid ${THEME.cardBorder}` }}>
-                <div style={{fontSize: '14px', fontWeight: '700', color: THEME.text}}>⚪ BRANCO</div>
-                <div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.branco.ippon}</div></div>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.branco.waza}</div></div>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.branco.yuko}</div></div>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.branco.shido}</div></div>
-                </div>
-            </div>
-            {/* CRONOMETRO */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{fontSize: '10px', color: tempoDisplay.isGS ? THEME.warning : THEME.textDim, fontWeight: '700', letterSpacing:'1px'}}>{tempoDisplay.text}</div>
-                <div style={{fontSize: '32px', fontFamily: 'monospace', fontWeight: '700', color: tempoDisplay.isGS ? THEME.warning : 'white', letterSpacing:'-1px'}}>{tempoDisplay.time}</div>
-            </div>
-            {/* AZUL (I-W-Y-S) - ORDEM CORRIGIDA */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: `1px solid ${THEME.cardBorder}` }}>
-                <div style={{fontSize: '14px', fontWeight: '700', color: THEME.primary}}>🔵 AZUL</div>
-                <div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.azul.ippon}</div></div>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.azul.waza}</div></div>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.azul.yuko}</div></div>
-                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.azul.shido}</div></div>
-                </div>
-            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.text}}>⚪ BRANCO</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.branco.ippon}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.branco.waza}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.branco.yuko}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.branco.shido}</div></div></div></div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><div style={{fontSize: '10px', color: tempoDisplay.isGS ? THEME.warning : THEME.textDim, fontWeight: '700', letterSpacing:'1px'}}>{tempoDisplay.text}</div><div style={{fontSize: '32px', fontFamily: 'monospace', fontWeight: '700', color: tempoDisplay.isGS ? THEME.warning : 'white', letterSpacing:'-1px'}}>{tempoDisplay.time}</div></div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.primary}}>🔵 AZUL</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.azul.ippon}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.azul.waza}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.azul.yuko}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.azul.shido}</div></div></div></div>
           </div>
 
           {/* DASHBOARD */}
@@ -463,7 +424,7 @@ export default function JudoPlayer() {
             </div>
           </div>
 
-          {/* LOG (COM EDIÇÃO) */}
+          {/* LOG (COM EDIT) */}
           <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
               <h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3>
@@ -487,7 +448,6 @@ export default function JudoPlayer() {
                     {ev.resultado && ev.resultado !== 'NADA' && <div style={{marginTop:'4px', background: ev.resultado==='IPPON'?'white':THEME.warning, color: 'black', display:'inline-block', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'800'}}>{ev.resultado}</div>}
                   </div>
                   <div style={{display:'flex', gap:'5px'}}>
-                    {/* BOTÃO DE EDIÇÃO (VAR) */}
                     <button onClick={() => editarEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Edit2 size={14}/></button>
                     <button onClick={() => setEventos(eventos.filter((e:any) => e.id !== ev.id))} style={{background:'none', border:'none', color: THEME.cardBorder, cursor:'pointer'}}><X size={14}/></button>
                   </div>
