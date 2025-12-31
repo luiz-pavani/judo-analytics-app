@@ -4,7 +4,7 @@ import {
   Play, Pause, Trash2, Download, Video, Film, List, X, 
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
-  Edit2, Bot, Copy, Check // Novos ícones para IA
+  Edit2, Bot, Copy, Check 
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -57,13 +57,12 @@ export default function JudoPlayer() {
   const [sugestoes, setSugestoes] = useState<string[]>([]);
   const [motivoShido, setMotivoShido] = useState(DB_SHIDOS[0]);
 
-  // STATE: MODALS (Registro & IA)
+  // STATE: MODALS
   const [modalAberto, setModalAberto] = useState(false);
-  const [modalIA, setModalIA] = useState(false);
+  const [modalIA, setModalIA] = useState(false); // CORREÇÃO IA
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const [registroPendente, setRegistroPendente] = useState<any>(null);
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
@@ -73,9 +72,9 @@ export default function JudoPlayer() {
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v11') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v11_fixed') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v11', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v11_fixed', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
@@ -161,24 +160,55 @@ export default function JudoPlayer() {
   const registrarFluxo = (tipo: string) => setEventos([{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...eventos]);
   const registrarPunicao = (tipo: string, atleta: string) => setEventos([{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...eventos]);
 
-  // --- ANALYTICS & AI ---
+  // --- CÁLCULO DE TEMPO CORRIGIDO (CRONÔMETRO) ---
+  const accumulatedFightTime = useMemo(() => {
+    let total = 0;
+    let start = null;
+    const evs = eventos.filter((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
+
+    for (const ev of evs) {
+      if (ev.tipo === 'HAJIME') {
+        start = ev.tempo;
+      } else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) {
+        total += (ev.tempo - start);
+        start = null;
+      }
+    }
+    // Se o último evento foi Hajime, soma o tempo decorrido até agora
+    if (start !== null && currentTime > start) {
+      total += (currentTime - start);
+    }
+    return total;
+  }, [eventos, currentTime, currentVideo.name]);
+
+  const tempoDisplay = useMemo(() => {
+    // Verifica se houve PELO MENOS UM Hajime. Se não, trava em 4:00.
+    const hasHajime = eventos.some((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO' && e.tipo === 'HAJIME');
+    
+    if (!hasHajime) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
+
+    const REGULAR_TIME = 240; // 4 minutos
+    if (accumulatedFightTime <= REGULAR_TIME) {
+      const remaining = REGULAR_TIME - accumulatedFightTime;
+      return { 
+        text: "TEMPO REGULAR", 
+        time: `${Math.floor(remaining/60)}:${Math.floor(remaining%60).toString().padStart(2,'0')}`, 
+        isGS: false 
+      };
+    } else {
+      const gs = accumulatedFightTime - REGULAR_TIME;
+      return { 
+        text: "GOLDEN SCORE", 
+        time: `${Math.floor(gs/60)}:${Math.floor(gs%60).toString().padStart(2,'0')}`, 
+        isGS: true 
+      };
+    }
+  }, [accumulatedFightTime, eventos, currentVideo.name]);
+
   const fightStartTime = useMemo(() => {
     const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
     return evs.length > 0 ? evs[0].tempo : 0;
   }, [eventos, currentVideo.name]);
-
-  const tempoDisplay = useMemo(() => {
-    const lutaRolando = currentTime >= fightStartTime;
-    if (!lutaRolando) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
-    const elapsed = currentTime - fightStartTime;
-    if (elapsed <= 240) {
-      const rem = 240 - elapsed;
-      return { text: "TEMPO REGULAR", time: `${Math.floor(rem/60)}:${Math.floor(rem%60).toString().padStart(2,'0')}`, isGS: false };
-    } else {
-      const gs = elapsed - 240;
-      return { text: "GOLDEN SCORE", time: `${Math.floor(gs/60)}:${Math.floor(gs%60).toString().padStart(2,'0')}`, isGS: true };
-    }
-  }, [currentTime, fightStartTime]);
 
   const placar = useMemo(() => {
     const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
@@ -208,6 +238,8 @@ export default function JudoPlayer() {
 
   // --- AI PROMPT GENERATOR ---
   const gerarPromptIA = () => {
+    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
+    
     // Coleta dados
     const evs = eventos.filter((e:any) => e.videoId === currentVideo.name);
     const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
@@ -219,7 +251,7 @@ Atue como um analista de desempenho olímpico de Judô. Analise os dados estatí
 
 [CONTEXTO]
 Vídeo: ${currentVideo.name}
-Tempo Total: ${formatTimeVideo(tempoDeLuta.total)} (Golden Score: ${tempoDeLuta.isGS ? 'SIM' : 'NÃO'})
+Tempo Total: ${formatTimeVideo(accumulatedFightTime)} (Golden Score: ${tempoDisplay.isGS ? 'SIM' : 'NÃO'})
 
 [BRANCO]
 Pontuação: Ippon=${placar.branco.ippon}, Waza-ari=${placar.branco.waza}, Shido=${placar.branco.shido}
@@ -300,7 +332,7 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v11.0 AI</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v11.1 Fix</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -309,7 +341,7 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
             <button onClick={() => fileInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'6px 12px', fontSize:'12px'}}>+ ARQ</button>
             <input type="file" ref={fileInputRef} style={{display:'none'}} multiple accept="video/*" onChange={handleFileSelect} />
           </div>
-          {/* BOTÃO IA NOVO */}
+          {/* BOTÃO IA CORRIGIDO */}
           <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI REPORT</button>
           
           <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
@@ -317,10 +349,10 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
         </div>
       </div>
 
-      {/* --- MODAL IA REPORT (NOVO) --- */}
+      {/* --- MODAL IA REPORT (CORRIGIDO E MOVIDO PARA CIMA) --- */}
       {modalIA && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ ...cardStyle, width: '100%', maxWidth: '600px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ ...cardStyle, width: '100%', maxWidth: '600px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
               <h2 style={{margin:0, color: '#a855f7', fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Bot size={24}/> RELATÓRIO INTELIGENTE</h2>
               <button onClick={() => setModalIA(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
@@ -408,7 +440,13 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
           <div style={{ ...cardStyle, padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.text}}>⚪ BRANCO</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.branco.ippon}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.branco.waza}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.branco.yuko}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.branco.shido}</div></div></div></div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><div style={{fontSize: '10px', color: tempoDisplay.isGS ? THEME.warning : THEME.textDim, fontWeight: '700', letterSpacing:'1px'}}>{tempoDisplay.text}</div><div style={{fontSize: '32px', fontFamily: 'monospace', fontWeight: '700', color: tempoDisplay.isGS ? THEME.warning : 'white', letterSpacing:'-1px'}}>{tempoDisplay.time}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.primary}}>🔵 AZUL</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.azul.ippon}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.azul.waza}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.azul.yuko}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.azul.shido}</div></div></div></div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.primary}}>🔵 AZUL</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
+                {/* ORDEM CORRIGIDA: IPPON -> SHIDO */}
+                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.azul.ippon}</div></div>
+                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.azul.waza}</div></div>
+                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.azul.yuko}</div></div>
+                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.azul.shido}</div></div>
+            </div></div>
           </div>
 
           {/* DASHBOARD */}
