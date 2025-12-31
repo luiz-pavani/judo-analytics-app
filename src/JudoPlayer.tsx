@@ -66,14 +66,13 @@ export default function JudoPlayer() {
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [resultadoPreSelecionado, setResultadoPreSelecionado] = useState<string | null>(null);
   
-  // NOVO: Modo de Punição no Modal (null, 'SHIDO', 'HANSOKU')
   const [punicaoMode, setPunicaoMode] = useState<string | null>(null);
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13_1') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v13', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v13_1', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
@@ -98,8 +97,9 @@ export default function JudoPlayer() {
         case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
         case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
         case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
-        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break; // NOVO
-        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break; // NOVO
+        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break; // NOVO: NADA
+        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
+        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
         case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
       }
     };
@@ -164,7 +164,6 @@ export default function JudoPlayer() {
     setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  // NOVO: Função específica para abrir modal de Punição via Teclado
   const iniciarRegistroPunicaoTeclado = (tipo: 'SHIDO' | 'HANSOKU') => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
     let t = currentTime;
@@ -178,7 +177,7 @@ export default function JudoPlayer() {
     setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); 
     
     if (ev.categoria === 'PUNICAO') {
-        setPunicaoMode(ev.tipo); // Abre em modo punição
+        setPunicaoMode(ev.tipo);
         setMotivoShido(ev.especifico);
     } else {
         setPunicaoMode(null);
@@ -209,7 +208,7 @@ export default function JudoPlayer() {
   const registrarFluxo = (tipo: string) => setEventos(prev => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
   const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos(prev => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
 
-  // --- CÁLCULO DE TEMPO ---
+  // --- CÁLCULOS ---
   const accumulatedFightTime = useMemo(() => {
     let total = 0; let start = null;
     const evs = eventos.filter((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
@@ -258,7 +257,6 @@ export default function JudoPlayer() {
     return { groupData, vol, eff };
   }, [eventos, currentVideo.name]);
 
-  // --- AI ---
   const gerarPromptIA = () => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
     const evs = eventos.filter((e:any) => e.videoId === currentVideo.name);
@@ -288,7 +286,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_1_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -307,7 +305,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.0</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.1</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -333,12 +331,11 @@ export default function JudoPlayer() {
         </div>
       )}
 
-      {/* --- MODAL REGISTRO (PUNIÇÃO OU TÉCNICA) --- */}
+      {/* --- MODAL REGISTRO --- */}
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             
-            {/* CABEÇALHO */}
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
               <h2 style={{margin:0, color: punicaoMode ? THEME.danger : THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
                 {punicaoMode ? (punicaoMode==='SHIDO' ? <><AlertTriangle size={24}/> REGISTRAR SHIDO</> : <><AlertOctagon size={24}/> REGISTRAR HANSOKU</>) : <><MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR TÉCNICA'}</>}
@@ -346,7 +343,6 @@ export default function JudoPlayer() {
               <button onClick={() => setModalAberto(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
             </div>
 
-            {/* SE FOR PUNIÇÃO (MODO SIMPLES) */}
             {punicaoMode ? (
               <div>
                 <div style={{fontSize:'12px', color: THEME.textDim, marginBottom:'10px', textAlign:'center', textTransform:'uppercase'}}>Quem cometeu a infração?</div>
@@ -358,7 +354,6 @@ export default function JudoPlayer() {
                 <select style={{width:'100%', background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'12px', borderRadius:'8px', fontSize: '14px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select>
               </div>
             ) : (
-              // SE FOR TÉCNICA (MODO COMPLETO)
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                   <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>QUEM?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:modalAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪</button><button onClick={()=>setModalAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='AZUL'?THEME.primary:THEME.surface, color:modalAtleta==='AZUL'?'white':THEME.textDim}}>🔵</button></div></div>
@@ -402,7 +397,7 @@ export default function JudoPlayer() {
           </div>
 
           <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, width:'100%', padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`, marginBottom:'24px'}}>
-            <CheckCircle size={28}/> MARCAR AÇÃO (ESPAÇO)
+            <CheckCircle size={28}/> MARCAR AÇÃO
           </button>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
@@ -416,7 +411,7 @@ export default function JudoPlayer() {
           </div>
 
           <div style={{...cardStyle, padding:'16px'}}>
-             <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'10px', fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> ATALHOS: I=IPPON, W=WAZA, Y=YUKO, S=SHIDO, H=HANSOKU</div>
+             <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'10px', fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> ATALHOS: I=IPPON, W=WAZA, Y=YUKO, N=NADA, S=SHIDO, H=HANSOKU</div>
              <div style={{display:'flex', gap:'8px'}}><select style={{flex:1, background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'10px', borderRadius:'8px', fontSize: '13px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select><button onClick={() => registrarPunicaoDireto('SHIDO', 'BRANCO')} style={{...btnStyle, width:'48px', background:'#e2e8f0', color:'#0f172a', fontSize:'16px'}}>⚪</button><button onClick={() => registrarPunicaoDireto('SHIDO', 'AZUL')} style={{...btnStyle, width:'48px', background: THEME.primary, color:'white', fontSize:'16px'}}>🔵</button></div>
           </div>
         </div>
