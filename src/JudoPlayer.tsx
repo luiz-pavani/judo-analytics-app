@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
-import { Download, Trash2, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle, Link, Upload, Film, Youtube, MousePointerClick, Rewind, Gauge, List, SkipForward, SkipBack, MonitorPlay } from 'lucide-react';
+// Troquei MonitorPlay por Tv para evitar erros de versão de ícone
+import { Download, Trash2, PlayCircle, PauseCircle, Timer, Flag, Gavel, X, Search, CheckCircle, Link, Upload, Film, Youtube, MousePointerClick, Rewind, Gauge, List, SkipForward, SkipBack, Tv } from 'lucide-react';
 
 // --- THEME SYSTEM (MODERN SAAS) ---
 const THEME = {
@@ -47,7 +48,11 @@ export default function JudoPlayer() {
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([{ id: 'kU_gjfnyu6A', type: 'YOUTUBE', name: 'Final Paris 2025' }]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showPlaylist, setShowPlaylist] = useState(false);
-  const currentVideo = playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' };
+  
+  // Safe access to current video
+  const currentVideo = useMemo(() => {
+    return playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' };
+  }, [playlist, currentVideoIndex]);
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -72,12 +77,18 @@ export default function JudoPlayer() {
   const [modalGrupo, setModalGrupo] = useState('TE-WAZA');
   const [tempoCapturado, setTempoCapturado] = useState(0);
 
+  // CARREGAMENTO SEGURO DO BANCO DE DADOS
   const [eventos, setEventos] = useState(() => {
-    const salvos = localStorage.getItem('smaartpro_db_v6');
-    return salvos ? JSON.parse(salvos) : [];
+    try {
+      const salvos = localStorage.getItem('smaartpro_db_v6_safe'); // Novo nome para resetar dados corrompidos
+      return salvos ? JSON.parse(salvos) : [];
+    } catch (e) {
+      console.error("Erro ao carregar dados", e);
+      return [];
+    }
   });
 
-  useEffect(() => { localStorage.setItem('smaartpro_db_v6', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v6_safe', JSON.stringify(eventos)); }, [eventos]);
 
   // --- HANDLERS ---
   useEffect(() => {
@@ -237,7 +248,7 @@ export default function JudoPlayer() {
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Video;Tempo Video;Tempo Luta;Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
     
-    // Agrupa eventos por vídeo para achar o 'Zero' de cada um
+    // Agrupa eventos por vídeo
     const eventosPorVideo: Record<string, any[]> = {};
     eventos.forEach((ev: any) => {
       if (!eventosPorVideo[ev.videoId]) eventosPorVideo[ev.videoId] = [];
@@ -246,8 +257,6 @@ export default function JudoPlayer() {
 
     Object.keys(eventosPorVideo).forEach(vidName => {
       const evs = eventosPorVideo[vidName].sort((a:any,b:any) => a.tempo - b.tempo);
-      
-      // Acha o primeiro Hajime deste vídeo específico
       const firstHajime = evs.find((e:any) => e.categoria === 'FLUXO' && e.tipo === 'HAJIME');
       const zeroTime = firstHajime ? firstHajime.tempo : 0;
 
@@ -272,9 +281,9 @@ export default function JudoPlayer() {
       {/* HEADER */}
       <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
-          <MonitorPlay size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
+          <Tv size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v6.1</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v6.2</span>
         </h1>
         
         <div style={{display:'flex', gap:'10px'}}>
