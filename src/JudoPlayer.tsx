@@ -4,7 +4,7 @@ import {
   Play, Pause, Trash2, Download, Video, Film, List, X, 
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
-  Edit2, Bot, Copy, Check 
+  Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -40,7 +40,6 @@ export default function JudoPlayer() {
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([{ id: 'kU_gjfnyu6A', type: 'YOUTUBE', name: 'Final Paris 2025' }]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showPlaylist, setShowPlaylist] = useState(false);
-  
   const currentVideo = useMemo(() => playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' }, [playlist, currentVideoIndex]);
 
   const [currentTime, setCurrentTime] = useState(0);
@@ -49,32 +48,32 @@ export default function JudoPlayer() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
 
-  // STATE: ANALYTICS
-  const [atletaAtual, setAtletaAtual] = useState('BRANCO'); 
-  const [ladoAtual, setLadoAtual] = useState('DIREITA');   
-  const [nomeGolpe, setNomeGolpe] = useState('');          
-  const [grupoSelecionado, setGrupoSelecionado] = useState('TE-WAZA'); 
-  const [sugestoes, setSugestoes] = useState<string[]>([]);
-  const [motivoShido, setMotivoShido] = useState(DB_SHIDOS[0]);
-
-  // STATE: MODALS
+  // STATE: ANALYTICS & MODALS
   const [modalAberto, setModalAberto] = useState(false);
-  const [modalIA, setModalIA] = useState(false); // CORREÇÃO IA
+  const [modalIA, setModalIA] = useState(false);
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Dados para registro
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
   const [modalGrupo, setModalGrupo] = useState('TE-WAZA');
+  const [motivoShido, setMotivoShido] = useState(DB_SHIDOS[0]);
+  const [sugestoes, setSugestoes] = useState<string[]>([]);
+  
   const [tempoCapturado, setTempoCapturado] = useState(0);
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
+  const [resultadoPreSelecionado, setResultadoPreSelecionado] = useState<string | null>(null);
+  
+  // NOVO: Modo de Punição no Modal (null, 'SHIDO', 'HANSOKU')
+  const [punicaoMode, setPunicaoMode] = useState<string | null>(null);
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v11_fixed') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v11_fixed', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v13', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
@@ -83,18 +82,32 @@ export default function JudoPlayer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // --- ATALHOS DE TECLADO ---
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => { 
-      if (e.code === 'Space' && !modalAberto && !modalIA) { 
-        e.preventDefault(); 
-        iniciarRegistroRapido(); 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (modalIA) return;
+      if (modalAberto) {
+        if (e.key === 'Escape') setModalAberto(false);
+        if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA');
+        return;
+      }
+      if (document.activeElement?.tagName === 'INPUT') return;
+
+      switch(e.code) {
+        case 'Space': e.preventDefault(); toggleFlowAndLog(); break;
+        case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
+        case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
+        case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
+        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break; // NOVO
+        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break; // NOVO
+        case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type]);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode]);
 
-  // Playlist & Video Logic
+  // --- PLAYER & PLAYLIST ---
   const handleFileSelect = (e: any) => {
     const files = Array.from(e.target.files);
     const newItems: PlaylistItem[] = files.map((file: any) => ({ id: URL.createObjectURL(file), type: 'FILE', name: file.name }));
@@ -135,74 +148,85 @@ export default function JudoPlayer() {
   const irPara = (t: number) => { const st = Math.max(0, t - 2); if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } setCurrentTime(st); };
   const mudarVelocidade = () => { const r = [0.25, 0.5, 1.0, 1.5, 2.0]; const n = r[(r.indexOf(playbackRate)+1)%r.length]; setPlaybackRate(n); if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); else filePlayerRef.current.playbackRate = n; };
 
-  // --- REGISTRO ---
-  const iniciarRegistroRapido = () => {
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause();
+  // --- REGISTRO & FLUXO ---
+  const toggleFlowAndLog = () => {
+    if (isPlaying) { registrarFluxo('MATE'); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); } 
+    else { registrarFluxo('HAJIME'); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.playVideo(); else filePlayerRef.current?.play(); }
+  };
+
+  const iniciarRegistroRapido = (resultadoInicial?: string) => {
+    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
     let t = currentTime;
-    if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); 
-    else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
-    setEditingEventId(null); setTempoCapturado(t); setModalAtleta('BRANCO'); setModalNome(''); setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100);
+    if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
+    
+    setEditingEventId(null); setTempoCapturado(t); setModalAtleta('BRANCO'); setModalNome(''); setPunicaoMode(null);
+    setResultadoPreSelecionado(resultadoInicial || null);
+    setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  // NOVO: Função específica para abrir modal de Punição via Teclado
+  const iniciarRegistroPunicaoTeclado = (tipo: 'SHIDO' | 'HANSOKU') => {
+    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
+    let t = currentTime;
+    if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
+    
+    setEditingEventId(null); setTempoCapturado(t); setPunicaoMode(tipo); setModalAberto(true);
   };
 
   const editarEvento = (ev: any) => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause();
-    setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico); setModalGrupo(ev.grupo || 'TE-WAZA'); setModalAberto(true);
+    setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); 
+    
+    if (ev.categoria === 'PUNICAO') {
+        setPunicaoMode(ev.tipo); // Abre em modo punição
+        setMotivoShido(ev.especifico);
+    } else {
+        setPunicaoMode(null);
+        setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico); 
+        setModalGrupo(ev.grupo || 'TE-WAZA');
+        setResultadoPreSelecionado(ev.resultado);
+    }
+    setModalAberto(true);
   };
 
   const confirmarEContinuar = (resultado: string) => {
     const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'TECNICA', grupo: modalGrupo, especifico: modalNome || "Técnica Geral", atleta: modalAtleta, lado: modalLado, corTecnica: CORES_GRUPOS[modalGrupo], resultado: resultado };
+    salvarEFechar(dados);
+  };
+
+  const confirmarPunicao = (atleta: string) => {
+    const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'PUNICAO', tipo: punicaoMode, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning };
+    salvarEFechar(dados);
+  };
+
+  const salvarEFechar = (dados: any) => {
     if (editingEventId) setEventos(eventos.map((ev: any) => ev.id === editingEventId ? { ...ev, ...dados } : ev));
     else setEventos([{ id: Date.now(), ...dados }, ...eventos]);
     setModalAberto(false);
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
   };
 
-  const registrarFluxo = (tipo: string) => setEventos([{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...eventos]);
-  const registrarPunicao = (tipo: string, atleta: string) => setEventos([{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...eventos]);
+  const registrarFluxo = (tipo: string) => setEventos(prev => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
+  const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos(prev => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
 
-  // --- CÁLCULO DE TEMPO CORRIGIDO (CRONÔMETRO) ---
+  // --- CÁLCULO DE TEMPO ---
   const accumulatedFightTime = useMemo(() => {
-    let total = 0;
-    let start = null;
+    let total = 0; let start = null;
     const evs = eventos.filter((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
-
     for (const ev of evs) {
-      if (ev.tipo === 'HAJIME') {
-        start = ev.tempo;
-      } else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) {
-        total += (ev.tempo - start);
-        start = null;
-      }
+      if (ev.tipo === 'HAJIME') start = ev.tempo;
+      else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) { total += (ev.tempo - start); start = null; }
     }
-    // Se o último evento foi Hajime, soma o tempo decorrido até agora
-    if (start !== null && currentTime > start) {
-      total += (currentTime - start);
-    }
+    if (start !== null && currentTime > start) total += (currentTime - start);
     return total;
   }, [eventos, currentTime, currentVideo.name]);
 
   const tempoDisplay = useMemo(() => {
-    // Verifica se houve PELO MENOS UM Hajime. Se não, trava em 4:00.
     const hasHajime = eventos.some((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO' && e.tipo === 'HAJIME');
-    
     if (!hasHajime) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
-
-    const REGULAR_TIME = 240; // 4 minutos
-    if (accumulatedFightTime <= REGULAR_TIME) {
-      const remaining = REGULAR_TIME - accumulatedFightTime;
-      return { 
-        text: "TEMPO REGULAR", 
-        time: `${Math.floor(remaining/60)}:${Math.floor(remaining%60).toString().padStart(2,'0')}`, 
-        isGS: false 
-      };
-    } else {
-      const gs = accumulatedFightTime - REGULAR_TIME;
-      return { 
-        text: "GOLDEN SCORE", 
-        time: `${Math.floor(gs/60)}:${Math.floor(gs%60).toString().padStart(2,'0')}`, 
-        isGS: true 
-      };
-    }
+    const elapsed = accumulatedFightTime;
+    if (elapsed <= 240) return { text: "TEMPO REGULAR", time: `${Math.floor((240-elapsed)/60)}:${Math.floor((240-elapsed)%60).toString().padStart(2,'0')}`, isGS: false };
+    else return { text: "GOLDEN SCORE", time: `${Math.floor((elapsed-240)/60)}:${Math.floor((elapsed-240)%60).toString().padStart(2,'0')}`, isGS: true };
   }, [accumulatedFightTime, eventos, currentVideo.name]);
 
   const fightStartTime = useMemo(() => {
@@ -214,9 +238,7 @@ export default function JudoPlayer() {
     const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
     eventos.filter((ev:any) => ev.videoId === currentVideo.name).forEach((ev: any) => {
       const q = ev.atleta === 'BRANCO' ? p.branco : p.azul;
-      if (ev.resultado === 'IPPON') q.ippon++;
-      if (ev.resultado === 'WAZA-ARI') q.waza++;
-      if (ev.resultado === 'YUKO') q.yuko++;
+      if (ev.resultado === 'IPPON') q.ippon++; if (ev.resultado === 'WAZA-ARI') q.waza++; if (ev.resultado === 'YUKO') q.yuko++;
       if (ev.categoria === 'PUNICAO') { if (ev.tipo === 'SHIDO') q.shido++; if (ev.tipo === 'HANSOKU') q.shido += 3; }
     });
     return p;
@@ -236,52 +258,16 @@ export default function JudoPlayer() {
     return { groupData, vol, eff };
   }, [eventos, currentVideo.name]);
 
-  // --- AI PROMPT GENERATOR ---
+  // --- AI ---
   const gerarPromptIA = () => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
-    
-    // Coleta dados
     const evs = eventos.filter((e:any) => e.videoId === currentVideo.name);
     const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
     const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', ');
-    const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    
-    const prompt = `
-Atue como um analista de desempenho olímpico de Judô. Analise os dados estatísticos abaixo da luta:
-
-[CONTEXTO]
-Vídeo: ${currentVideo.name}
-Tempo Total: ${formatTimeVideo(accumulatedFightTime)} (Golden Score: ${tempoDisplay.isGS ? 'SIM' : 'NÃO'})
-
-[BRANCO]
-Pontuação: Ippon=${placar.branco.ippon}, Waza-ari=${placar.branco.waza}, Shido=${placar.branco.shido}
-Volume de Ataque: ${stats.vol.branco} tentativas.
-Eficiência: ${stats.eff.branco}%
-Golpes Tentados: ${tecnicasBranco || 'Nenhum'}
-Punições: ${shidosBranco || 'Nenhuma'}
-
-[AZUL]
-Pontuação: Ippon=${placar.azul.ippon}, Waza-ari=${placar.azul.waza}, Shido=${placar.azul.shido}
-Volume de Ataque: ${stats.vol.azul} tentativas.
-Eficiência: ${stats.eff.azul}%
-Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
-
-[TAREFA]
-1. Faça uma análise tática resumida: Quem dominou o kumi-kata? Quem foi mais agressivo?
-2. Identifique o Tokui-waza (golpe principal) aparente de cada um.
-3. Aponte 2 falhas táticas baseadas nas punições ou ataques falhos.
-4. Sugira 1 exercício específico para o atleta que perdeu melhorar seu desempenho.
-`.trim();
-
-    setGeneratedPrompt(prompt);
-    setCopied(false);
-    setModalIA(true);
+    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Identifique o Tokui-waza e sugira correções táticas.`;
+    setGeneratedPrompt(prompt); setCopied(false); setModalIA(true);
   };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedPrompt);
-    setCopied(true);
-  };
+  const copyToClipboard = () => { navigator.clipboard.writeText(generatedPrompt); setCopied(true); };
 
   useEffect(() => {
     if (modalNome.length > 1) {
@@ -293,7 +279,6 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
   }, [modalNome]);
 
   const formatTimeVideo = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
-  
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Video;Tempo Video;Tempo Luta;Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
     const evsByVid: any = {};
@@ -301,24 +286,14 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
     Object.keys(evsByVid).forEach(vid => {
         const sorted = evsByVid[vid].sort((a:any,b:any)=>a.tempo-b.tempo);
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
-        sorted.forEach((e:any) => {
-          csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`;
-        });
+        sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v11_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
-
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
-
   const SimpleDonut = ({ data }: { data: any[] }) => {
-    let cumPct = 0;
-    if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>;
-    const gradient = `conic-gradient(${data.map(d => { const str = `${d.color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`;
-    return (
-      <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: gradient}}>
-        <div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div>
-      </div>
-    );
+    let cumPct = 0; if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>;
+    return <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: `conic-gradient(${data.map(d => { const str = `${d.color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`}}><div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div></div>;
   };
 
   const cardStyle: any = { background: THEME.card, border: `1px solid ${THEME.cardBorder}`, borderRadius: '16px', overflow: 'hidden' };
@@ -332,7 +307,7 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v11.1 Fix</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.0</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -341,55 +316,70 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
             <button onClick={() => fileInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'6px 12px', fontSize:'12px'}}>+ ARQ</button>
             <input type="file" ref={fileInputRef} style={{display:'none'}} multiple accept="video/*" onChange={handleFileSelect} />
           </div>
-          {/* BOTÃO IA CORRIGIDO */}
           <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI REPORT</button>
-          
           <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
           <button onClick={baixarCSV} style={{...btnStyle, background: THEME.success, color:'white', padding:'8px 16px', fontSize: '13px'}}><Download size={16}/> CSV</button>
         </div>
       </div>
 
-      {/* --- MODAL IA REPORT (CORRIGIDO E MOVIDO PARA CIMA) --- */}
+      {/* --- MODAL IA --- */}
       {modalIA && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '600px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
-              <h2 style={{margin:0, color: '#a855f7', fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Bot size={24}/> RELATÓRIO INTELIGENTE</h2>
-              <button onClick={() => setModalIA(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
-            </div>
-            <div style={{background: THEME.surface, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, fontSize:'12px', fontFamily:'monospace', whiteSpace:'pre-wrap', maxHeight:'300px', overflowY:'auto', marginBottom:'20px'}}>
-              {generatedPrompt}
-            </div>
-            <div style={{display:'flex', justifyContent:'flex-end'}}>
-              <button onClick={copyToClipboard} style={{...btnStyle, padding: '12px 24px', background: copied ? THEME.success : '#a855f7', color: 'white', fontSize:'14px'}}>
-                {copied ? <><Check size={18}/> COPIADO!</> : <><Copy size={18}/> COPIAR PARA CHATGPT</>}
-              </button>
-            </div>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h2 style={{margin:0, color: '#a855f7', fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Bot size={24}/> RELATÓRIO INTELIGENTE</h2><button onClick={() => setModalIA(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button></div>
+            <div style={{background: THEME.surface, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, fontSize:'12px', fontFamily:'monospace', whiteSpace:'pre-wrap', maxHeight:'300px', overflowY:'auto', marginBottom:'20px'}}>{generatedPrompt}</div>
+            <div style={{display:'flex', justifyContent:'flex-end'}}><button onClick={copyToClipboard} style={{...btnStyle, padding: '12px 24px', background: copied ? THEME.success : '#a855f7', color: 'white', fontSize:'14px'}}>{copied ? <><Check size={18}/> COPIADO!</> : <><Copy size={18}/> COPIAR PARA CHATGPT</>}</button></div>
           </div>
         </div>
       )}
 
-      {/* --- MODAL REGISTRO --- */}
+      {/* --- MODAL REGISTRO (PUNIÇÃO OU TÉCNICA) --- */}
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            
+            {/* CABEÇALHO */}
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
-              <h2 style={{margin:0, color: THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR'}</h2>
+              <h2 style={{margin:0, color: punicaoMode ? THEME.danger : THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
+                {punicaoMode ? (punicaoMode==='SHIDO' ? <><AlertTriangle size={24}/> REGISTRAR SHIDO</> : <><AlertOctagon size={24}/> REGISTRAR HANSOKU</>) : <><MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR TÉCNICA'}</>}
+              </h2>
               <button onClick={() => setModalAberto(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-              <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>QUEM?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:modalAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪</button><button onClick={()=>setModalAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='AZUL'?THEME.primary:THEME.surface, color:modalAtleta==='AZUL'?'white':THEME.textDim}}>🔵</button></div></div>
-              <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>LADO?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalLado('ESQUERDA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='ESQUERDA'?THEME.warning:THEME.surface, color:modalLado==='ESQUERDA'?'#0f172a':THEME.textDim, fontSize:'11px'}}>ESQ</button><button onClick={()=>setModalLado('DIREITA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='DIREITA'?THEME.success:THEME.surface, color:modalLado==='DIREITA'?'white':THEME.textDim, fontSize:'11px'}}>DIR</button></div></div>
-            </div>
-            <div style={{marginBottom:'24px', position:'relative'}}>
-              <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TÉCNICA</div>
-              <div style={{position:'relative'}}><Search size={18} style={{position:'absolute', top:'13px', left:'14px', color: THEME.textDim}}/><input ref={inputRef} type="text" placeholder="Digite o nome..." value={modalNome} onChange={e=>setModalNome(e.target.value)} style={{width:'100%', padding:'12px 12px 12px 42px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px', fontSize:'15px', outline:'none', boxSizing:'border-box'}}/></div>
-              {sugestoes.length > 0 && (<div style={{position:'absolute', top:'100%', width:'100%', background: THEME.card, zIndex:100, border:`1px solid ${THEME.cardBorder}`, borderRadius:'8px', marginTop:'4px', boxShadow:'0 10px 15px -3px rgba(0, 0, 0, 0.3)', overflow:'hidden'}}>{sugestoes.map(s=>(<div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'12px', borderBottom:`1px solid ${THEME.cardBorder}`, cursor:'pointer', display:'flex', justifyContent:'space-between', fontSize:'14px'}}><span>{s}</span><span style={{fontSize:'10px', background:THEME.surface, padding:'2px 6px', borderRadius:'4px', color:THEME.textDim}}>{DB_GOLPES[Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase())||'']}</span></div>))}</div>)}
-            </div>
-            <div>
-              <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>RESULTADO</div>
-              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}><button onClick={() => confirmarEContinuar('NADA')} style={{...btnStyle, padding: '14px', background: THEME.cardBorder, color: THEME.textDim}}>NADA</button><button onClick={() => confirmarEContinuar('YUKO')} style={{...btnStyle, padding: '14px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text}}>YUKO</button><button onClick={() => confirmarEContinuar('WAZA-ARI')} style={{...btnStyle, padding: '14px', background: `rgba(234, 179, 8, 0.1)`, border:`1px solid ${THEME.warning}`, color: THEME.warning}}>WAZA-ARI</button><button onClick={() => confirmarEContinuar('IPPON')} style={{...btnStyle, padding: '14px', background: THEME.text, color: '#000', border:`2px solid ${THEME.text}`}}>IPPON</button></div>
-            </div>
+
+            {/* SE FOR PUNIÇÃO (MODO SIMPLES) */}
+            {punicaoMode ? (
+              <div>
+                <div style={{fontSize:'12px', color: THEME.textDim, marginBottom:'10px', textAlign:'center', textTransform:'uppercase'}}>Quem cometeu a infração?</div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px'}}>
+                  <button onClick={() => confirmarPunicao('BRANCO')} style={{...btnStyle, padding:'30px', background: '#e2e8f0', color: '#0f172a', fontSize:'18px', flexDirection:'column'}}><div style={{width:'40px', height:'40px', borderRadius:'50%', background:'white', border:'4px solid #0f172a'}}></div>BRANCO</button>
+                  <button onClick={() => confirmarPunicao('AZUL')} style={{...btnStyle, padding:'30px', background: THEME.primary, color: 'white', fontSize:'18px', flexDirection:'column'}}><div style={{width:'40px', height:'40px', borderRadius:'50%', background:'blue', border:'4px solid white'}}></div>AZUL</button>
+                </div>
+                <div style={{fontSize:'12px', color: THEME.textDim, marginBottom:'8px'}}>Motivo (Opcional):</div>
+                <select style={{width:'100%', background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'12px', borderRadius:'8px', fontSize: '14px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select>
+              </div>
+            ) : (
+              // SE FOR TÉCNICA (MODO COMPLETO)
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                  <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>QUEM?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:modalAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪</button><button onClick={()=>setModalAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='AZUL'?THEME.primary:THEME.surface, color:modalAtleta==='AZUL'?'white':THEME.textDim}}>🔵</button></div></div>
+                  <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>LADO?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalLado('ESQUERDA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='ESQUERDA'?THEME.warning:THEME.surface, color:modalLado==='ESQUERDA'?'#0f172a':THEME.textDim, fontSize:'11px'}}>ESQ</button><button onClick={()=>setModalLado('DIREITA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='DIREITA'?THEME.success:THEME.surface, color:modalLado==='DIREITA'?'white':THEME.textDim, fontSize:'11px'}}>DIR</button></div></div>
+                </div>
+                <div style={{marginBottom:'24px', position:'relative'}}>
+                  <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TÉCNICA</div>
+                  <div style={{position:'relative'}}><Search size={18} style={{position:'absolute', top:'13px', left:'14px', color: THEME.textDim}}/><input ref={inputRef} type="text" placeholder="Digite o nome..." value={modalNome} onChange={e=>setModalNome(e.target.value)} style={{width:'100%', padding:'12px 12px 12px 42px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px', fontSize:'15px', outline:'none', boxSizing:'border-box'}}/></div>
+                  {sugestoes.length > 0 && (<div style={{position:'absolute', top:'100%', width:'100%', background: THEME.card, zIndex:100, border:`1px solid ${THEME.cardBorder}`, borderRadius:'8px', marginTop:'4px', boxShadow:'0 10px 15px -3px rgba(0, 0, 0, 0.3)', overflow:'hidden'}}>{sugestoes.map(s=>(<div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'12px', borderBottom:`1px solid ${THEME.cardBorder}`, cursor:'pointer', display:'flex', justifyContent:'space-between', fontSize:'14px'}}><span>{s}</span><span style={{fontSize:'10px', background:THEME.surface, padding:'2px 6px', borderRadius:'4px', color:THEME.textDim}}>{DB_GOLPES[Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase())||'']}</span></div>))}</div>)}
+                </div>
+                <div>
+                  <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>RESULTADO (SELECIONADO: {resultadoPreSelecionado || 'NENHUM'})</div>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
+                    <button onClick={() => confirmarEContinuar('NADA')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='NADA'?THEME.text:THEME.cardBorder, color: resultadoPreSelecionado==='NADA'?'black':THEME.textDim}}>NADA</button>
+                    <button onClick={() => confirmarEContinuar('YUKO')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='YUKO'?THEME.text:THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: resultadoPreSelecionado==='YUKO'?'black':THEME.text}}>YUKO (Y)</button>
+                    <button onClick={() => confirmarEContinuar('WAZA-ARI')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='WAZA-ARI'?THEME.warning:`rgba(234, 179, 8, 0.1)`, border:`1px solid ${THEME.warning}`, color: resultadoPreSelecionado==='WAZA-ARI'?'black':THEME.warning}}>WAZA-ARI (W)</button>
+                    <button onClick={() => confirmarEContinuar('IPPON')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='IPPON'?THEME.text:THEME.surface, color: resultadoPreSelecionado==='IPPON'?'black':THEME.text, border:`2px solid ${THEME.text}`}}>IPPON (I)</button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -411,13 +401,23 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
              <button onClick={mudarVelocidade} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, padding:'4px 10px', fontSize:'11px'}}><Gauge size={14}/> {playbackRate}x</button>
           </div>
 
-          <button onClick={iniciarRegistroRapido} style={{...btnStyle, width:'100%', padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`, marginBottom:'24px'}}><CheckCircle size={28}/> MARCAR AÇÃO</button>
+          <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, width:'100%', padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`, marginBottom:'24px'}}>
+            <CheckCircle size={28}/> MARCAR AÇÃO (ESPAÇO)
+          </button>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}><button onClick={() => registrarFluxo('HAJIME')} style={{...btnStyle, background: THEME.success, color:'white', padding:'16px'}}><Play size={20}/> HAJIME</button><button onClick={() => registrarFluxo('MATE')} style={{...btnStyle, background: THEME.danger, color:'white', padding:'16px'}}><Pause size={20}/> MATE</button><button onClick={() => registrarFluxo('GOLDEN SCORE')} style={{...btnStyle, background: THEME.warning, color:'#000', padding:'12px', fontSize:'13px'}}><Clock size={18}/> GOLDEN SCORE</button><button onClick={() => registrarFluxo('SOREMADE')} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color:THEME.text, padding:'12px', fontSize:'13px'}}><Flag size={18}/> SOREMADE</button></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+            <button onClick={() => toggleFlowAndLog()} style={{...btnStyle, background: isPlaying ? THEME.danger : THEME.success, color:'white', padding:'16px'}}>
+              {isPlaying ? <><Pause size={20}/> MATE (ESPAÇO)</> : <><Play size={20}/> HAJIME (ESPAÇO)</>}
+            </button>
+            <div style={{display:'flex', gap:'5px'}}>
+               <button onClick={() => registrarFluxo('GOLDEN SCORE')} style={{...btnStyle, flex:1, background: THEME.warning, color:'#000', padding:'12px', fontSize:'13px'}}><Clock size={18}/> GOLDEN SCORE</button>
+               <button onClick={() => registrarFluxo('SOREMADE')} style={{...btnStyle, flex:1, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color:THEME.text, padding:'12px', fontSize:'13px'}}><Flag size={18}/> SOREMADE</button>
+            </div>
+          </div>
 
           <div style={{...cardStyle, padding:'16px'}}>
-             <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'10px', fontWeight:'600'}}>REGISTRO DE PUNIÇÕES</div>
-             <div style={{display:'flex', gap:'8px'}}><select style={{flex:1, background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'10px', borderRadius:'8px', fontSize: '13px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select><button onClick={() => registrarPunicao('SHIDO', 'BRANCO')} style={{...btnStyle, width:'48px', background:'#e2e8f0', color:'#0f172a', fontSize:'16px'}}>⚪</button><button onClick={() => registrarPunicao('SHIDO', 'AZUL')} style={{...btnStyle, width:'48px', background: THEME.primary, color:'white', fontSize:'16px'}}>🔵</button></div>
+             <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'10px', fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> ATALHOS: I=IPPON, W=WAZA, Y=YUKO, S=SHIDO, H=HANSOKU</div>
+             <div style={{display:'flex', gap:'8px'}}><select style={{flex:1, background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'10px', borderRadius:'8px', fontSize: '13px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select><button onClick={() => registrarPunicaoDireto('SHIDO', 'BRANCO')} style={{...btnStyle, width:'48px', background:'#e2e8f0', color:'#0f172a', fontSize:'16px'}}>⚪</button><button onClick={() => registrarPunicaoDireto('SHIDO', 'AZUL')} style={{...btnStyle, width:'48px', background: THEME.primary, color:'white', fontSize:'16px'}}>🔵</button></div>
           </div>
         </div>
 
@@ -441,7 +441,6 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.text}}>⚪ BRANCO</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.branco.ippon}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.branco.waza}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.branco.yuko}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.branco.shido}</div></div></div></div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><div style={{fontSize: '10px', color: tempoDisplay.isGS ? THEME.warning : THEME.textDim, fontWeight: '700', letterSpacing:'1px'}}>{tempoDisplay.text}</div><div style={{fontSize: '32px', fontFamily: 'monospace', fontWeight: '700', color: tempoDisplay.isGS ? THEME.warning : 'white', letterSpacing:'-1px'}}>{tempoDisplay.time}</div></div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.primary}}>🔵 AZUL</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
-                {/* ORDEM CORRIGIDA: IPPON -> SHIDO */}
                 <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.azul.ippon}</div></div>
                 <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.azul.waza}</div></div>
                 <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.azul.yuko}</div></div>
@@ -462,10 +461,10 @@ Golpes Tentados: ${tecnicasAzul || 'Nenhum'}
             </div>
           </div>
 
-          {/* LOG (COM EDIT) */}
+          {/* LOG */}
           <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
-              <h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3>
+              <div style={{display:'flex', alignItems:'center', gap:'8px'}}><h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3><Keyboard size={12} color={THEME.textDim}/></div>
               <button onClick={()=>setEventos(eventos.filter(e => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
             </div>
             <div style={{ ...cardStyle, flex:1, padding: '8px', minHeight: '200px', overflowY: 'auto', background: THEME.surface }}>
