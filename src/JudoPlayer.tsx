@@ -3,8 +3,7 @@ import YouTube from 'react-youtube';
 import { 
   Play, Pause, Trash2, Download, Video, Film, List, X, 
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
-  MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
-  Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon
+  MousePointerClick, Gauge, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon, BarChart2, PieChart, Edit2
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -31,6 +30,7 @@ const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 
 export default function JudoPlayer() {
+  const mainContainerRef = useRef<HTMLDivElement>(null);
   const youtubePlayerRef = useRef<any>(null);
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
@@ -54,6 +54,7 @@ export default function JudoPlayer() {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Dados para registro
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
@@ -68,9 +69,9 @@ export default function JudoPlayer() {
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13_5') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13_6') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v13_5', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v13_6', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
@@ -78,14 +79,6 @@ export default function JudoPlayer() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // --- DERIVED STATE (FIGHT STATUS) ---
-  // Determina se a luta está rolando (último comando foi HAJIME)
-  const isFightActive = useMemo(() => {
-    const evs = eventos.filter((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO').sort((a:any, b:any) => b.tempo - a.tempo); // Ordem decrescente
-    if (evs.length === 0) return false;
-    return evs[0].tipo === 'HAJIME';
-  }, [eventos, currentVideo.name]);
 
   // --- ATALHOS DE TECLADO ---
   useEffect(() => {
@@ -112,7 +105,7 @@ export default function JudoPlayer() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isFightActive]);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode]);
 
   // --- PLAYER & PLAYLIST ---
   const handleFileSelect = (e: any) => {
@@ -155,7 +148,7 @@ export default function JudoPlayer() {
     return () => cancelAnimationFrame(af);
   }, [isPlaying, currentVideo.type]);
 
-  // --- CONTROLES DE VÍDEO (AGORA SEPARADOS) ---
+  // --- CONTROLES DE VÍDEO (SEPARADOS) ---
   const toggleVideo = () => { 
     if (currentVideo.type === 'YOUTUBE') isPlaying ? youtubePlayerRef.current.pauseVideo() : youtubePlayerRef.current.playVideo(); 
     else isPlaying ? filePlayerRef.current.pause() : filePlayerRef.current.play(); 
@@ -167,6 +160,14 @@ export default function JudoPlayer() {
   // --- REGISTRO & FLUXO ---
   
   // Função exclusiva para alternar estado da luta (Spacebar)
+  // DERIVED STATE (FIGHT STATUS)
+  const isFightActive = useMemo(() => {
+    // CORREÇÃO CRÍTICA AQUI: Usando 'ev' corretamente
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => b.tempo - a.tempo);
+    if (evs.length === 0) return false;
+    return evs[0].tipo === 'HAJIME';
+  }, [eventos, currentVideo.name]);
+
   const toggleFightState = () => {
     if (isFightActive) registrarFluxo('MATE');
     else registrarFluxo('HAJIME');
@@ -214,13 +215,13 @@ export default function JudoPlayer() {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
   };
 
-  const registrarFluxo = (tipo: string) => setEventos(prev => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
-  const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos(prev => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
+  const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
+  const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
 
   // --- CÁLCULOS ---
   const accumulatedFightTime = useMemo(() => {
     let total = 0; let start = null;
-    const evs = eventos.filter((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
     for (const ev of evs) {
       if (ev.tipo === 'HAJIME') start = ev.tempo;
       else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) { total += (ev.tempo - start); start = null; }
@@ -230,7 +231,8 @@ export default function JudoPlayer() {
   }, [eventos, currentTime, currentVideo.name]);
 
   const tempoDisplay = useMemo(() => {
-    const hasHajime = eventos.some((e:any) => e.videoId === currentVideo.name && e.categoria === 'FLUXO' && e.tipo === 'HAJIME');
+    // Correção: ev (evento) e não e
+    const hasHajime = eventos.some((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME');
     if (!hasHajime) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
     const elapsed = accumulatedFightTime;
     if (elapsed <= 240) return { text: "TEMPO REGULAR", time: `${Math.floor((240-elapsed)/60)}:${Math.floor((240-elapsed)%60).toString().padStart(2,'0')}`, isGS: false };
@@ -238,7 +240,8 @@ export default function JudoPlayer() {
   }, [accumulatedFightTime, eventos, currentVideo.name]);
 
   const fightStartTime = useMemo(() => {
-    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && e.categoria === 'FLUXO' && e.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
+    // Correção: ev (evento) e não e
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
     return evs.length > 0 ? evs[0].tempo : 0;
   }, [eventos, currentVideo.name]);
 
@@ -296,7 +299,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_5_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_6_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -315,7 +318,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.5</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.6</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
