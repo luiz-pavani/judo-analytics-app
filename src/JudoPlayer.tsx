@@ -1,21 +1,25 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import YouTube from 'react-youtube';
-// Usando APENAS ícones clássicos universais para evitar erros de versão
-import { Play, Pause, Square, Circle, Trash2, Download, Video, Film, List, X, Plus, Clock, AlertTriangle, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+// CORREÇÃO: Adicionei TODOS os ícones que são usados no visual para não dar erro de "missing name"
+import { 
+  Play, Pause, Square, Circle, Trash2, Download, Video, Film, List, X, Plus, 
+  Clock, Flag, Check, ChevronLeft, ChevronRight, Search, CheckCircle, 
+  MousePointerClick, Gauge, Youtube, Rewind, AlertTriangle 
+} from 'lucide-react';
 
 // --- THEME SYSTEM (MODERN SAAS) ---
 const THEME = {
-  bg: '#0f172a',        // Slate 900
-  card: '#1e293b',      // Slate 800
-  cardBorder: '#334155',// Slate 700
-  text: '#f8fafc',      // Slate 50
-  textDim: '#94a3b8',   // Slate 400
-  primary: '#3b82f6',   // Blue 500
+  bg: '#0f172a',        
+  card: '#1e293b',      
+  cardBorder: '#334155',
+  text: '#f8fafc',      
+  textDim: '#94a3b8',   
+  primary: '#3b82f6',   
   primaryHover: '#2563eb',
-  danger: '#ef4444',    // Red 500
-  success: '#10b981',   // Emerald 500
-  warning: '#eab308',   // Yellow 500
-  surface: '#020617',   // Slate 950
+  danger: '#ef4444',    
+  success: '#10b981',   
+  warning: '#eab308',   
+  surface: '#020617',   
 };
 
 // --- BANCO DE DADOS ---
@@ -76,14 +80,14 @@ export default function JudoPlayer() {
   // LOAD DATA SAFE
   const [eventos, setEventos] = useState(() => {
     try {
-      const salvos = localStorage.getItem('smaartpro_db_v8_ultra_safe');
+      const salvos = localStorage.getItem('smaartpro_db_v8_fixed');
       return salvos ? JSON.parse(salvos) : [];
     } catch (e) {
       return [];
     }
   });
 
-  useEffect(() => { localStorage.setItem('smaartpro_db_v8_ultra_safe', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v8_fixed', JSON.stringify(eventos)); }, [eventos]);
 
   // --- HANDLERS ---
   useEffect(() => {
@@ -150,6 +154,14 @@ export default function JudoPlayer() {
     if (isPlaying) loop();
     return () => cancelAnimationFrame(af);
   }, [isPlaying, currentVideo.type]);
+
+  const togglePlay = () => {
+    if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) {
+        isPlaying ? youtubePlayerRef.current.pauseVideo() : youtubePlayerRef.current.playVideo();
+    } else if (currentVideo.type === 'FILE' && filePlayerRef.current) {
+        isPlaying ? filePlayerRef.current.pause() : filePlayerRef.current.play();
+    }
+  };
 
   const irPara = (t: number) => {
     const seekTime = Math.max(0, t - 2);
@@ -238,24 +250,35 @@ export default function JudoPlayer() {
   }, [eventos, currentVideo.name]);
 
   const formatTime = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
+  
+  // --- FUNÇÃO CORRIGIDA PARA MÚLTIPLOS VÍDEOS ---
   const baixarCSV = () => {
     let csv = "data:text/csv;charset=utf-8,Video;Tempo Video;Tempo Luta;Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
+    
+    // Agrupa eventos por vídeo
     const eventosPorVideo: Record<string, any[]> = {};
-    eventos.forEach((ev: any) => { if (!eventosPorVideo[ev.videoId]) eventosPorVideo[ev.videoId] = []; eventosPorVideo[ev.videoId].push(ev); });
+    eventos.forEach((ev: any) => {
+      if (!eventosPorVideo[ev.videoId]) eventosPorVideo[ev.videoId] = [];
+      eventosPorVideo[ev.videoId].push(ev);
+    });
+
     Object.keys(eventosPorVideo).forEach(vidName => {
       const evs = eventosPorVideo[vidName].sort((a:any,b:any) => a.tempo - b.tempo);
       const firstHajime = evs.find((e:any) => e.categoria === 'FLUXO' && e.tipo === 'HAJIME');
       const zeroTime = firstHajime ? firstHajime.tempo : 0;
+
       evs.forEach((ev:any) => {
         const tr = (ev.tempo - zeroTime).toFixed(1).replace('.', ',');
         csv += `${ev.videoId};${ev.tempo.toFixed(3).replace('.', ',')};${tr};${ev.categoria};${ev.especifico || ev.tipo || '-'};${ev.resultado || '-'};${ev.atleta};${ev.lado};${ev.grupo || ev.tipo}\n`;
       });
     });
+
     const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_analytics_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
+  
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.cardBorder; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
 
-  // STYLES
+  // ESTILOS COMUNS (Cards)
   const cardStyle: any = { background: THEME.card, border: `1px solid ${THEME.cardBorder}`, borderRadius: '16px', overflow: 'hidden' };
   const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' };
 
@@ -267,7 +290,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v8.0 Safe</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v8.1 Safe</span>
         </h1>
         
         <div style={{display:'flex', gap:'10px'}}>
@@ -286,16 +309,18 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* --- MODAL DE REGISTRO --- */}
+      {/* --- MODAL DE REGISTRO (GLASSMORPHISM) --- */}
       {modalAberto && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.7)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
               <h2 style={{margin:0, color: THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
-                <CheckCircle size={24}/> REGISTRAR AÇÃO
+                <MousePointerClick size={24}/> REGISTRAR AÇÃO
               </h2>
               <button onClick={() => setModalAberto(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
             </div>
+
             {/* SELEÇÃO ATLETA/LADO */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
@@ -313,6 +338,7 @@ export default function JudoPlayer() {
                 </div>
               </div>
             </div>
+
             {/* INPUT TÉCNICA */}
             <div style={{marginBottom:'24px', position:'relative'}}>
               <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600', letterSpacing:'0.5px'}}>TÉCNICA APLICADA</div>
@@ -333,6 +359,7 @@ export default function JudoPlayer() {
                 </div>
               )}
             </div>
+
             {/* PONTUAÇÃO */}
             <div>
               <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600', letterSpacing:'0.5px'}}>RESULTADO (CONFIRMAR)</div>
@@ -375,7 +402,7 @@ export default function JudoPlayer() {
                  <span style={{fontSize:'11px', color: THEME.textDim, fontFamily:'monospace'}}>{formatTime(currentTime)} / {formatTime(duration)}</span>
                </div>
              </div>
-             <button onClick={mudarVelocidade} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, padding:'4px 10px', fontSize:'11px'}}>{playbackRate}x</button>
+             <button onClick={mudarVelocidade} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, padding:'4px 10px', fontSize:'11px'}}><Gauge size={14}/> {playbackRate}x</button>
           </div>
 
           <button onClick={iniciarRegistroRapido} style={{...btnStyle, width:'100%', padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`, marginBottom:'24px'}}>
@@ -462,7 +489,7 @@ export default function JudoPlayer() {
                 }}>
                   <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
                     <div style={{display:'flex', gap:'8px', fontSize:'11px', color: THEME.textDim, alignItems:'center', marginBottom:'4px'}}>
-                      <span style={{fontFamily:'monospace', display:'flex', alignItems:'center', gap:'4px'}}>{formatTime(ev.tempo)}</span>
+                      <span style={{fontFamily:'monospace', display:'flex', alignItems:'center', gap:'4px'}}><Rewind size={10}/> {formatTime(ev.tempo)}</span>
                       <span style={{color: THEME.warning, fontWeight:'700', background:`${THEME.warning}22`, padding:'1px 5px', borderRadius:'3px'}}>
                         {ev.tempo >= fightStartTime ? formatTime(ev.tempo - fightStartTime) : '-'}
                       </span>
