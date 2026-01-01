@@ -5,7 +5,8 @@ import {
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
-  PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye 
+  PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
+  FileJson, UploadCloud // Ícones novos para Backup
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -26,6 +27,7 @@ const DB_GOLPES: Record<string, string> = {
   "ude-garami": "KANSETSU-WAZA", "ude-hishigi-jūji-gatame": "KANSETSU-WAZA", "ude-hishigi-ude-gatame": "KANSETSU-WAZA", "ude-hishigi-hiza-gatame": "KANSETSU-WAZA", "ude-hishigi-waki-gatame": "KANSETSU-WAZA", "ude-hishigi-hara-gatame": "KANSETSU-WAZA", "ude-hishigi-ashi-gatame": "KANSETSU-WAZA", "ude-hishigi-te-gatame": "KANSETSU-WAZA", "ude-hishigi-sankaku-gatame": "KANSETSU-WAZA", "ashi-garami": "KANSETSU-WAZA"
 };
 
+const GRUPOS = ["TE-WAZA", "KOSHI-WAZA", "ASHI-WAZA", "SUTEMI-WAZA", "OSAEKOMI-WAZA", "SHIME-WAZA", "KANSETSU-WAZA"];
 const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", "KANSETSU-WAZA": "#ec4899" };
 
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
@@ -36,6 +38,7 @@ export default function JudoPlayer() {
   const youtubePlayerRef = useRef<any>(null);
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
+  const backupInputRef = useRef<any>(null); // Ref para restaurar backup
   const inputRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -82,11 +85,11 @@ export default function JudoPlayer() {
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v15_3') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v16') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v15_3', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v16', JSON.stringify(eventos)); }, [eventos]);
 
-  // --- 1. CÁLCULOS CRÍTICOS (HOISTED - DEVEM VIR PRIMEIRO) ---
+  // --- 1. CÁLCULOS CRÍTICOS ---
   const currentVideo = useMemo(() => playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' }, [playlist, currentVideoIndex]);
 
   const isFightActive = useMemo(() => {
@@ -95,21 +98,62 @@ export default function JudoPlayer() {
     return evs[0].tipo === 'HAJIME';
   }, [eventos, currentVideo.name]);
 
-  // --- 2. TODAS AS FUNÇÕES (DEFINIDAS ANTES DE QUALQUER USEEFFECT) ---
-
-  // Funções de Vídeo
-  const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
+  // --- 2. FUNÇÕES DE SUPORTE ---
   
-  const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
-  
-  const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
-  
-  const removerDaPlaylist = (index: number, e: any) => { 
-    e.stopPropagation(); 
-    const nova = playlist.filter((_,i)=>i!==index); 
-    if(nova.length) setPlaylist(nova); 
-    if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); 
+  // -- BACKUP & RESTORE --
+  const exportarBackup = () => {
+    const dadosBackup = {
+      version: '16.0',
+      timestamp: new Date().toISOString(),
+      playlist: playlist,
+      eventos: eventos
+    };
+    
+    const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `smaartpro_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
+
+  const importarBackup = (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (json.eventos && Array.isArray(json.eventos)) {
+          // Backup valido
+          if (confirm("ATENÇÃO: Isso substituirá todos os dados atuais. Deseja continuar?")) {
+            setEventos(json.eventos);
+            if (json.playlist && Array.isArray(json.playlist)) {
+              setPlaylist(json.playlist);
+              setCurrentVideoIndex(0);
+            }
+            alert("Backup restaurado com sucesso! 🥋");
+          }
+        } else {
+          alert("Arquivo inválido ou corrompido.");
+        }
+      } catch (err) {
+        alert("Erro ao ler o arquivo JSON.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = null;
+  };
+
+  // -- VIDEO CONTROLS --
+  const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
+  const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
+  const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
+  const removerDaPlaylist = (index: number, e: any) => { e.stopPropagation(); const nova = playlist.filter((_,i)=>i!==index); if(nova.length) setPlaylist(nova); if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); };
 
   const handleFileSelect = (e: any) => {
     const files = Array.from(e.target.files || []);
@@ -134,9 +178,8 @@ export default function JudoPlayer() {
 
   const mudarVelocidade = () => { const r = [0.25, 0.5, 1.0, 1.5, 2.0]; const n = r[(r.indexOf(playbackRate)+1)%r.length]; setPlaybackRate(n); if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); else filePlayerRef.current.playbackRate = n; };
 
-  // Funções de Registro e Luta
+  // -- LOGGING & FIGHT --
   const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
-  
   const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
 
   const toggleFightState = () => {
@@ -185,7 +228,7 @@ export default function JudoPlayer() {
     setModalAberto(true);
   };
 
-  // Funções de Desenho
+  // -- DRAWING --
   const clearCanvas = () => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
@@ -306,8 +349,6 @@ export default function JudoPlayer() {
   };
 
   // --- 3. EFEITOS (USEEFFECTS) ---
-  // IMPORTANTE: Eles só aparecem AGORA, depois que todas as funções foram criadas.
-  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (modalIA) return;
@@ -452,7 +493,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v15_3_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v16_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -471,7 +512,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v15.3</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v16.0 Backup</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -480,6 +521,14 @@ export default function JudoPlayer() {
             <button onClick={() => fileInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'6px 12px', fontSize:'12px'}}>+ ARQ</button>
             <input type="file" ref={fileInputRef} style={{display:'none'}} multiple accept="video/*" onChange={handleFileSelect} />
           </div>
+          
+          <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`, marginLeft:'10px'}}>
+             <button onClick={exportarBackup} style={{...btnStyle, background: 'transparent', color: THEME.success, padding:'6px 12px', fontSize:'12px', fontWeight:'700'}}><FileJson size={16}/> SALVAR</button>
+             <div style={{width:'1px', background: THEME.cardBorder, margin: '4px 0'}}></div>
+             <button onClick={() => backupInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.warning, padding:'6px 12px', fontSize:'12px', fontWeight:'700'}}><UploadCloud size={16}/> ABRIR</button>
+             <input type="file" ref={backupInputRef} style={{display:'none'}} accept=".json" onChange={importarBackup} />
+          </div>
+
           <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI REPORT</button>
           <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
           <button onClick={baixarCSV} style={{...btnStyle, background: THEME.success, color:'white', padding:'8px 16px', fontSize: '13px'}}><Download size={16}/> CSV</button>
@@ -659,7 +708,7 @@ export default function JudoPlayer() {
           <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
               <div style={{display:'flex', alignItems:'center', gap:'8px'}}><h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3><Keyboard size={12} color={THEME.textDim}/></div>
-              <button onClick={()=>setEventos(eventos.filter((e:any) => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
+              <button onClick={()=>setEventos(eventos.filter(e => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
             </div>
             <div style={{ ...cardStyle, flex:1, padding: '8px', minHeight: '200px', overflowY: 'auto', background: THEME.surface }}>
               {eventos.filter(e => e.videoId === currentVideo.name).map((ev: any) => (
