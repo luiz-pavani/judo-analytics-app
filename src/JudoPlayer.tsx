@@ -443,11 +443,11 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v18_2_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v18_3_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
 
   const exportarBackup = () => {
-    const dadosBackup = { version: '18.2', timestamp: new Date().toISOString(), playlist, eventos };
+    const dadosBackup = { version: '18.3', timestamp: new Date().toISOString(), playlist, eventos };
     const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
@@ -729,13 +729,12 @@ export default function JudoPlayer() {
                 <div style={{display:'flex', alignItems:'center', background: THEME.surface, padding:'4px', borderRadius:'20px', border:`1px solid ${THEME.cardBorder}`, gap:'4px'}}>
                   <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="-0.05s"><ChevronLeft size={18}/></button>
                   <button onClick={toggleVideo} style={{
-                    cursor: 'pointer', border: 'none', borderRadius: '50%', 
-                    background: THEME.primary, color: 'white', 
-                    width: '40px', height: '40px', // Aumentado para 40px
                     display: 'flex', alignItems: 'center', justifyContent: 'center', // Centralização Forçada
+                    background: THEME.primary, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                    width: '40px', height: '40px', // Tamanho Fixo
                     boxShadow: `0 0 10px ${THEME.primary}66`
                   }}>
-                      {isPlaying ? <Pause size={20} color="#ffffff" fill="#ffffff" /> : <Play size={20} color="#ffffff" fill="#ffffff" style={{marginLeft:'3px'}}/>}
+                      {isPlaying ? <Pause size={20} color="#ffffff" fill="#ffffff" /> : <Play size={20} color="#ffffff" fill="#ffffff" style={{marginLeft:'3px'}} />}
                   </button>
                   <button onClick={() => stepFrame(1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="+0.05s"><ChevronRight size={18}/></button>
                 </div>
