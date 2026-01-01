@@ -90,9 +90,9 @@ export default function JudoPlayer() {
 
   // --- DATABASE ---
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v18_3') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v18_4') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v18_3', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v18_4', JSON.stringify(eventos)); }, [eventos]);
 
   // ==================================================================================
   // 1. CÁLCULOS (MEMO)
@@ -571,7 +571,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v18.3</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v18.4</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -728,14 +728,21 @@ export default function JudoPlayer() {
                 
                 <div style={{display:'flex', alignItems:'center', background: THEME.surface, padding:'4px', borderRadius:'20px', border:`1px solid ${THEME.cardBorder}`, gap:'4px'}}>
                   <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="-0.05s"><ChevronLeft size={18}/></button>
+                  
+                  {/* BOTÃO PLAY REVISADO */}
                   <button onClick={toggleVideo} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', // Centralização Forçada
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', // GARANTE CENTRALIZAÇÃO
                     background: THEME.primary, borderRadius: '50%', border: 'none', cursor: 'pointer',
-                    width: '40px', height: '40px', // Tamanho Fixo
-                    boxShadow: `0 0 10px ${THEME.primary}66`
+                    width: '48px', height: '48px', padding: 0, // AUMENTADO E SEM PADDING
+                    boxShadow: `0 0 15px ${THEME.primary}66`,
+                    flexShrink: 0
                   }}>
-                      {isPlaying ? <Pause size={20} color="#ffffff" fill="#ffffff" /> : <Play size={20} color="#ffffff" fill="#ffffff" style={{marginLeft:'3px'}} />}
+                      {isPlaying ? 
+                        <Pause size={24} color="white" fill="white" strokeWidth={2} /> : 
+                        <Play size={24} color="white" fill="white" strokeWidth={2} style={{marginLeft:'4px'}} /> // Pequeno ajuste ótico
+                      }
                   </button>
+
                   <button onClick={() => stepFrame(1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="+0.05s"><ChevronRight size={18}/></button>
                 </div>
 
