@@ -80,12 +80,11 @@ export default function JudoPlayer() {
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v14_1') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v14_2') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v14_1', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v14_2', JSON.stringify(eventos)); }, [eventos]);
 
   // --- CÁLCULOS CRÍTICOS (HOISTED) ---
-  // Movi estes cálculos para CIMA para que as funções de atalho possam acessá-los
   const currentVideo = useMemo(() => playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' }, [playlist, currentVideoIndex]);
 
   const isFightActive = useMemo(() => {
@@ -94,7 +93,7 @@ export default function JudoPlayer() {
     return evs[0].tipo === 'HAJIME';
   }, [eventos, currentVideo.name]);
 
-  // --- ACTIONS (DEFINIDAS ANTES DOS EFEITOS) ---
+  // --- ACTIONS ---
   const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
   
   const toggleFightState = () => {
@@ -361,7 +360,7 @@ export default function JudoPlayer() {
     const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
     const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', ');
     const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}. Identifique o Tokui-waza e sugira correções táticas.`;
+    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Identifique o Tokui-waza e sugira correções táticas.`;
     setGeneratedPrompt(prompt); setCopied(false); setModalIA(true);
   };
   const copyToClipboard = () => { navigator.clipboard.writeText(generatedPrompt); setCopied(true); };
@@ -385,7 +384,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v14_1_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v14_2_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -404,7 +403,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v14.1 Fixed</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v14.2 NoAds</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -434,14 +433,12 @@ export default function JudoPlayer() {
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-            
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
               <h2 style={{margin:0, color: punicaoMode ? THEME.danger : THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
                 {punicaoMode ? (punicaoMode==='SHIDO' ? <><AlertTriangle size={24}/> REGISTRAR SHIDO</> : <><AlertOctagon size={24}/> REGISTRAR HANSOKU</>) : <><MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR TÉCNICA'}</>}
               </h2>
               <button onClick={() => setModalAberto(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
             </div>
-
             {punicaoMode ? (
               <div>
                 <div style={{fontSize:'12px', color: THEME.textDim, marginBottom:'10px', textAlign:'center', textTransform:'uppercase'}}>Quem cometeu a infração?</div>
@@ -507,7 +504,7 @@ export default function JudoPlayer() {
                {/* OVERLAY DE FOCO (SÓ QUANDO NÃO ESTÁ DESENHANDO) */}
                {!isDrawingMode && <div onClick={toggleVideo} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>}
                
-               {currentVideo.type === 'YOUTUBE' ? (<YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }} />) : (<div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>)}
+               {currentVideo.type === 'YOUTUBE' ? (<YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, controls: 1, rel: 0, showinfo: 0, ecver: 2, iv_load_policy: 3, modestbranding: 1, playsinline: 1 } }} />) : (<div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>)}
           </div>
 
           <div style={{...cardStyle, padding:'8px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px'}}>
