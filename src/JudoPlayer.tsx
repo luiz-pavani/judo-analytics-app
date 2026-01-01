@@ -6,43 +6,92 @@ import {
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
   PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
-  FileJson, UploadCloud // Ícones novos para Backup
+  FileJson, UploadCloud, Printer
 } from 'lucide-react';
 
-// --- THEME SYSTEM ---
+// --- SISTEMA DE TEMAS ---
 const THEME = {
-  bg: '#0f172a', card: '#1e293b', cardBorder: '#334155', text: '#f8fafc', textDim: '#94a3b8',
-  primary: '#3b82f6', primaryHover: '#2563eb', danger: '#ef4444', success: '#10b981', warning: '#eab308', surface: '#020617', neutral: '#64748b'
+  bg: '#0f172a', 
+  card: '#1e293b', 
+  cardBorder: '#334155', 
+  text: '#f8fafc', 
+  textDim: '#94a3b8',
+  primary: '#3b82f6', 
+  primaryHover: '#2563eb', 
+  danger: '#ef4444', 
+  success: '#10b981', 
+  warning: '#eab308', 
+  surface: '#020617', 
+  neutral: '#64748b'
 };
 
-// --- BANCO DE DADOS ---
-const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
+// --- BANCO DE DADOS (CONFIGURAÇÕES) ---
+const DB_SHIDOS = [
+  "Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", 
+  "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"
+];
+
 const DB_GOLPES: Record<string, string> = {
-  "seoi-nage": "TE-WAZA", "ippon-seoi-nage": "TE-WAZA", "seoi-otoshi": "TE-WAZA", "tai-otoshi": "TE-WAZA", "kata-guruma": "TE-WAZA", "sukui-nage": "TE-WAZA", "obi-otoshi": "TE-WAZA", "uki-otoshi": "TE-WAZA", "sumi-otoshi": "TE-WAZA", "yama-arashi": "TE-WAZA", "obi-tori-gaeshi": "TE-WAZA", "morote-gari": "TE-WAZA", "kuchiki-taoshi": "TE-WAZA", "kibisu-gaeshi": "TE-WAZA", "uchi-mata-sukashi": "TE-WAZA", "kouchi-gaeshi": "TE-WAZA",
-  "uki-goshi": "KOSHI-WAZA", "ō-goshi": "KOSHI-WAZA", "koshi-guruma": "KOSHI-WAZA", "tsurikomi-goshi": "KOSHI-WAZA", "sode-tsurikomi-goshi": "KOSHI-WAZA", "harai-goshi": "KOSHI-WAZA", "tsuri-goshi": "KOSHI-WAZA", "hane-goshi": "KOSHI-WAZA", "utsuri-goshi": "KOSHI-WAZA", "ushiro-goshi": "KOSHI-WAZA",
-  "de-ashi-harai": "ASHI-WAZA", "hiza-guruma": "ASHI-WAZA", "sasae-tsurikomi-ashi": "ASHI-WAZA", "ō-soto-gari": "ASHI-WAZA", "ō-uchi-gari": "ASHI-WAZA", "ko-soto-gari": "ASHI-WAZA", "ko-uchi-gari": "ASHI-WAZA", "okuri-ashi-harai": "ASHI-WAZA", "uchi-mata": "ASHI-WAZA", "ko-soto-gake": "ASHI-WAZA", "ashi-guruma": "ASHI-WAZA", "harai-tsurikomi-ashi": "ASHI-WAZA", "ō-guruma": "ASHI-WAZA", "ō-soto-guruma": "ASHI-WAZA", "ō-soto-otoshi": "ASHI-WAZA", "tsubame-gaeshi": "ASHI-WAZA", "ō-soto-gaeshi": "ASHI-WAZA", "ō-uchi-gaeshi": "ASHI-WAZA", "hane-goshi-gaeshi": "ASHI-WAZA", "harai-goshi-gaeshi": "ASHI-WAZA", "uchi-mata-gaeshi": "ASHI-WAZA",
-  "tomoe-nage": "SUTEMI-WAZA", "sumi-gaeshi": "SUTEMI-WAZA", "hikikomi-gaeshi": "SUTEMI-WAZA", "tawara-gaeshi": "SUTEMI-WAZA", "ura-nage": "SUTEMI-WAZA", "yoko-otoshi": "SUTEMI-WAZA", "tani-otoshi": "SUTEMI-WAZA", "hane-makikomi": "SUTEMI-WAZA", "soto-makikomi": "SUTEMI-WAZA", "uchi-makikomi": "SUTEMI-WAZA", "uki-waza": "SUTEMI-WAZA", "yoko-wakare": "SUTEMI-WAZA", "yoko-guruma": "SUTEMI-WAZA", "yoko-gake": "SUTEMI-WAZA", "daki-wakare": "SUTEMI-WAZA", "ō-soto-makikomi": "SUTEMI-WAZA", "uchi-mata-makikomi": "SUTEMI-WAZA", "harai-makikomi": "SUTEMI-WAZA", "ko-uchi-makikomi": "SUTEMI-WAZA", "kani-basami": "SUTEMI-WAZA", "kawazu-gake": "SUTEMI-WAZA",
-  "kesa-gatame": "OSAEKOMI-WAZA", "kuzure-kesa-gatame": "OSAEKOMI-WAZA", "ushiro-kesa-gatame": "OSAEKOMI-WAZA", "kata-gatame": "OSAEKOMI-WAZA", "kami-shihō-gatame": "OSAEKOMI-WAZA", "kuzure-kami-shihō-gatame": "OSAEKOMI-WAZA", "yoko-shihō-gatame": "OSAEKOMI-WAZA", "tate-shihō-gatame": "OSAEKOMI-WAZA", "uki-gatame": "OSAEKOMI-WAZA", "ura-gatame": "OSAEKOMI-WAZA",
-  "nami-jūji-jime": "SHIME-WAZA", "gyaku-jūji-jime": "SHIME-WAZA", "kata-jūji-jime": "SHIME-WAZA", "hadaka-jime": "SHIME-WAZA", "okuri-eri-jime": "SHIME-WAZA", "kataha-jime": "SHIME-WAZA", "katate-jime": "SHIME-WAZA", "ryōte-jime": "SHIME-WAZA", "sode-guruma-jime": "SHIME-WAZA", "tsukkomi-jime": "SHIME-WAZA", "sankaku-jime": "SHIME-WAZA", "dō-jime": "SHIME-WAZA",
-  "ude-garami": "KANSETSU-WAZA", "ude-hishigi-jūji-gatame": "KANSETSU-WAZA", "ude-hishigi-ude-gatame": "KANSETSU-WAZA", "ude-hishigi-hiza-gatame": "KANSETSU-WAZA", "ude-hishigi-waki-gatame": "KANSETSU-WAZA", "ude-hishigi-hara-gatame": "KANSETSU-WAZA", "ude-hishigi-ashi-gatame": "KANSETSU-WAZA", "ude-hishigi-te-gatame": "KANSETSU-WAZA", "ude-hishigi-sankaku-gatame": "KANSETSU-WAZA", "ashi-garami": "KANSETSU-WAZA"
+  "seoi-nage": "TE-WAZA", "ippon-seoi-nage": "TE-WAZA", "seoi-otoshi": "TE-WAZA", 
+  "tai-otoshi": "TE-WAZA", "kata-guruma": "TE-WAZA", "sukui-nage": "TE-WAZA", 
+  "obi-otoshi": "TE-WAZA", "uki-otoshi": "TE-WAZA", "sumi-otoshi": "TE-WAZA", 
+  "yama-arashi": "TE-WAZA", "obi-tori-gaeshi": "TE-WAZA", "morote-gari": "TE-WAZA", 
+  "kuchiki-taoshi": "TE-WAZA", "kibisu-gaeshi": "TE-WAZA", "uchi-mata-sukashi": "TE-WAZA", 
+  "kouchi-gaeshi": "TE-WAZA",
+  "uki-goshi": "KOSHI-WAZA", "ō-goshi": "KOSHI-WAZA", "koshi-guruma": "KOSHI-WAZA", 
+  "tsurikomi-goshi": "KOSHI-WAZA", "sode-tsurikomi-goshi": "KOSHI-WAZA", "harai-goshi": "KOSHI-WAZA", 
+  "tsuri-goshi": "KOSHI-WAZA", "hane-goshi": "KOSHI-WAZA", "utsuri-goshi": "KOSHI-WAZA", 
+  "ushiro-goshi": "KOSHI-WAZA",
+  "de-ashi-harai": "ASHI-WAZA", "hiza-guruma": "ASHI-WAZA", "sasae-tsurikomi-ashi": "ASHI-WAZA", 
+  "ō-soto-gari": "ASHI-WAZA", "ō-uchi-gari": "ASHI-WAZA", "ko-soto-gari": "ASHI-WAZA", 
+  "ko-uchi-gari": "ASHI-WAZA", "okuri-ashi-harai": "ASHI-WAZA", "uchi-mata": "ASHI-WAZA", 
+  "ko-soto-gake": "ASHI-WAZA", "ashi-guruma": "ASHI-WAZA", "harai-tsurikomi-ashi": "ASHI-WAZA", 
+  "ō-guruma": "ASHI-WAZA", "ō-soto-guruma": "ASHI-WAZA", "ō-soto-otoshi": "ASHI-WAZA", 
+  "tsubame-gaeshi": "ASHI-WAZA", "ō-soto-gaeshi": "ASHI-WAZA", "ō-uchi-gaeshi": "ASHI-WAZA", 
+  "hane-goshi-gaeshi": "ASHI-WAZA", "harai-goshi-gaeshi": "ASHI-WAZA", "uchi-mata-gaeshi": "ASHI-WAZA",
+  "tomoe-nage": "SUTEMI-WAZA", "sumi-gaeshi": "SUTEMI-WAZA", "hikikomi-gaeshi": "SUTEMI-WAZA", 
+  "tawara-gaeshi": "SUTEMI-WAZA", "ura-nage": "SUTEMI-WAZA", "yoko-otoshi": "SUTEMI-WAZA", 
+  "tani-otoshi": "SUTEMI-WAZA", "hane-makikomi": "SUTEMI-WAZA", "soto-makikomi": "SUTEMI-WAZA", 
+  "uchi-makikomi": "SUTEMI-WAZA", "uki-waza": "SUTEMI-WAZA", "yoko-wakare": "SUTEMI-WAZA", 
+  "yoko-guruma": "SUTEMI-WAZA", "yoko-gake": "SUTEMI-WAZA", "daki-wakare": "SUTEMI-WAZA", 
+  "ō-soto-makikomi": "SUTEMI-WAZA", "uchi-mata-makikomi": "SUTEMI-WAZA", "harai-makikomi": "SUTEMI-WAZA", 
+  "ko-uchi-makikomi": "SUTEMI-WAZA", "kani-basami": "SUTEMI-WAZA", "kawazu-gake": "SUTEMI-WAZA",
+  "kesa-gatame": "OSAEKOMI-WAZA", "kuzure-kesa-gatame": "OSAEKOMI-WAZA", "ushiro-kesa-gatame": "OSAEKOMI-WAZA", 
+  "kata-gatame": "OSAEKOMI-WAZA", "kami-shihō-gatame": "OSAEKOMI-WAZA", "kuzure-kami-shihō-gatame": "OSAEKOMI-WAZA", 
+  "yoko-shihō-gatame": "OSAEKOMI-WAZA", "tate-shihō-gatame": "OSAEKOMI-WAZA", "uki-gatame": "OSAEKOMI-WAZA", 
+  "ura-gatame": "OSAEKOMI-WAZA",
+  "nami-jūji-jime": "SHIME-WAZA", "gyaku-jūji-jime": "SHIME-WAZA", "kata-jūji-jime": "SHIME-WAZA", 
+  "hadaka-jime": "SHIME-WAZA", "okuri-eri-jime": "SHIME-WAZA", "kataha-jime": "SHIME-WAZA", 
+  "katate-jime": "SHIME-WAZA", "ryōte-jime": "SHIME-WAZA", "sode-guruma-jime": "SHIME-WAZA", 
+  "tsukkomi-jime": "SHIME-WAZA", "sankaku-jime": "SHIME-WAZA", "dō-jime": "SHIME-WAZA",
+  "ude-garami": "KANSETSU-WAZA", "ude-hishigi-jūji-gatame": "KANSETSU-WAZA", "ude-hishigi-ude-gatame": "KANSETSU-WAZA", 
+  "ude-hishigi-hiza-gatame": "KANSETSU-WAZA", "ude-hishigi-waki-gatame": "KANSETSU-WAZA", 
+  "ude-hishigi-hara-gatame": "KANSETSU-WAZA", "ude-hishigi-ashi-gatame": "KANSETSU-WAZA", 
+  "ude-hishigi-te-gatame": "KANSETSU-WAZA", "ude-hishigi-sankaku-gatame": "KANSETSU-WAZA", 
+  "ashi-garami": "KANSETSU-WAZA"
 };
 
 const GRUPOS = ["TE-WAZA", "KOSHI-WAZA", "ASHI-WAZA", "SUTEMI-WAZA", "OSAEKOMI-WAZA", "SHIME-WAZA", "KANSETSU-WAZA"];
-const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", "KANSETSU-WAZA": "#ec4899" };
+const CORES_GRUPOS: any = { 
+  "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", 
+  "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", 
+  "KANSETSU-WAZA": "#ec4899" 
+};
 
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 
 export default function JudoPlayer() {
+  // --- REFERÊNCIAS (DOM) ---
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null); 
   const youtubePlayerRef = useRef<any>(null);
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
-  const backupInputRef = useRef<any>(null); // Ref para restaurar backup
+  const backupInputRef = useRef<any>(null);
   const inputRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // STATE: VIDEO & PLAYLIST
+  // --- ESTADO: VÍDEO & PLAYLIST ---
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([{ id: 'kU_gjfnyu6A', type: 'YOUTUBE', name: 'Final Paris 2025' }]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showPlaylist, setShowPlaylist] = useState(false);
@@ -54,7 +103,7 @@ export default function JudoPlayer() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
   const [isDataFullscreen, setIsDataFullscreen] = useState(false); 
 
-  // STATE: DRAWING (VECTOR ENGINE)
+  // --- ESTADO: DESENHO (VECTOR ENGINE) ---
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawTool, setDrawTool] = useState<'PEN' | 'ARROW'>('PEN');
   const [drawColor, setDrawColor] = useState('#eab308');
@@ -64,13 +113,14 @@ export default function JudoPlayer() {
   const [tempPoints, setTempPoints] = useState<any[]>([]);
   const [snapshot, setSnapshot] = useState<ImageData | null>(null);
 
-  // STATE: ANALYTICS & MODALS
+  // --- ESTADO: MODAIS & RELATÓRIOS ---
   const [modalAberto, setModalAberto] = useState(false);
   const [modalIA, setModalIA] = useState(false);
+  const [reportMode, setReportMode] = useState(false); // Ativa o modo de impressão
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // DADOS REGISTRO
+  // --- ESTADO: DADOS DE REGISTRO ---
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
@@ -83,13 +133,15 @@ export default function JudoPlayer() {
   const [resultadoPreSelecionado, setResultadoPreSelecionado] = useState<string | null>(null);
   const [punicaoMode, setPunicaoMode] = useState<string | null>(null);
 
-  // DB
+  // --- BANCO DE DADOS (LOCALSTORAGE) ---
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v16') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v17_1') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v16', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v17_1', JSON.stringify(eventos)); }, [eventos]);
 
-  // --- 1. CÁLCULOS CRÍTICOS ---
+  // ==================================================================================
+  // 1. CÁLCULOS CRÍTICOS (Memoized)
+  // ==================================================================================
   const currentVideo = useMemo(() => playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' }, [playlist, currentVideoIndex]);
 
   const isFightActive = useMemo(() => {
@@ -98,62 +150,105 @@ export default function JudoPlayer() {
     return evs[0].tipo === 'HAJIME';
   }, [eventos, currentVideo.name]);
 
-  // --- 2. FUNÇÕES DE SUPORTE ---
-  
-  // -- BACKUP & RESTORE --
-  const exportarBackup = () => {
-    const dadosBackup = {
-      version: '16.0',
-      timestamp: new Date().toISOString(),
-      playlist: playlist,
-      eventos: eventos
+  const accumulatedFightTime = useMemo(() => {
+    let total = 0; let start = null;
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
+    for (const ev of evs) {
+      if (ev.tipo === 'HAJIME') start = ev.tempo;
+      else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) { total += (ev.tempo - start); start = null; }
+    }
+    if (start !== null && currentTime > start) total += (currentTime - start);
+    return total;
+  }, [eventos, currentTime, currentVideo.name]);
+
+  const tempoDisplay = useMemo(() => {
+    const hasHajime = eventos.some((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME');
+    if (!hasHajime) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
+    const elapsed = accumulatedFightTime;
+    if (elapsed <= 240) return { text: "TEMPO REGULAR", time: `${Math.floor((240-elapsed)/60)}:${Math.floor((240-elapsed)%60).toString().padStart(2,'0')}`, isGS: false };
+    else return { text: "GOLDEN SCORE", time: `${Math.floor((elapsed-240)/60)}:${Math.floor((elapsed-240)%60).toString().padStart(2,'0')}`, isGS: true };
+  }, [accumulatedFightTime, eventos, currentVideo.name]);
+
+  const fightStartTime = useMemo(() => {
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
+    return evs.length > 0 ? evs[0].tempo : 0;
+  }, [eventos, currentVideo.name]);
+
+  const placar = useMemo(() => {
+    const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
+    eventos.filter((ev:any) => ev.videoId === currentVideo.name).forEach((ev: any) => {
+      const q = ev.atleta === 'BRANCO' ? p.branco : p.azul;
+      if (ev.resultado === 'IPPON') q.ippon++; if (ev.resultado === 'WAZA-ARI') q.waza++; if (ev.resultado === 'YUKO') q.yuko++;
+      if (ev.categoria === 'PUNICAO') { if (ev.tipo === 'SHIDO') q.shido++; if (ev.tipo === 'HANSOKU') q.shido += 3; }
+    });
+    return p;
+  }, [eventos, currentVideo.name]);
+
+  const stats = useMemo(() => {
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'TECNICA');
+    const total = evs.length || 1;
+    const groups: any = {};
+    evs.forEach((e:any) => { groups[e.grupo] = (groups[e.grupo] || 0) + 1; });
+    const groupData = Object.keys(groups).map(g => ({ name: g, val: groups[g], pct: (groups[g]/total)*100, color: CORES_GRUPOS[g] })).sort((a,b)=>b.val-a.val);
+    const vol = { branco: evs.filter((e:any)=>e.atleta==='BRANCO').length, azul: evs.filter((e:any)=>e.atleta==='AZUL').length };
+    const eff = {
+        branco: (evs.filter((e:any)=>e.atleta==='BRANCO' && e.resultado !== 'NADA').length / (vol.branco || 1) * 100).toFixed(0),
+        azul: (evs.filter((e:any)=>e.atleta==='AZUL' && e.resultado !== 'NADA').length / (vol.azul || 1) * 100).toFixed(0)
     };
-    
+    return { groupData, vol, eff };
+  }, [eventos, currentVideo.name]);
+
+  // ==================================================================================
+  // 2. FUNÇÕES DE LÓGICA (DEFINIDAS NO TOPO PARA EVITAR ERROS)
+  // ==================================================================================
+  
+  const formatTimeVideo = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
+
+  // -- RELATÓRIO E BACKUP --
+  const imprimirRelatorio = () => {
+    setReportMode(true);
+    setTimeout(() => {
+        window.print();
+    }, 500);
+  };
+
+  const exportarBackup = () => {
+    const dadosBackup = { version: '17.1', timestamp: new Date().toISOString(), playlist, eventos };
     const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `smaartpro_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
   const importarBackup = (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
+    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
         if (json.eventos && Array.isArray(json.eventos)) {
-          // Backup valido
           if (confirm("ATENÇÃO: Isso substituirá todos os dados atuais. Deseja continuar?")) {
-            setEventos(json.eventos);
-            if (json.playlist && Array.isArray(json.playlist)) {
-              setPlaylist(json.playlist);
-              setCurrentVideoIndex(0);
-            }
-            alert("Backup restaurado com sucesso! 🥋");
+            setEventos(json.eventos); if (json.playlist) { setPlaylist(json.playlist); setCurrentVideoIndex(0); }
+            alert("Backup restaurado! 🥋");
           }
-        } else {
-          alert("Arquivo inválido ou corrompido.");
-        }
-      } catch (err) {
-        alert("Erro ao ler o arquivo JSON.");
-      }
+        } else alert("Arquivo inválido.");
+      } catch (err) { alert("Erro ao ler JSON."); }
     };
-    reader.readAsText(file);
-    // Reset input
-    e.target.value = null;
+    reader.readAsText(file); e.target.value = null;
   };
 
-  // -- VIDEO CONTROLS --
+  // -- CONTROLES DE VÍDEO --
   const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
+  
   const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
+  
   const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
-  const removerDaPlaylist = (index: number, e: any) => { e.stopPropagation(); const nova = playlist.filter((_,i)=>i!==index); if(nova.length) setPlaylist(nova); if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); };
+  
+  const removerDaPlaylist = (index: number, e: any) => { 
+    e.stopPropagation(); 
+    const nova = playlist.filter((_,i)=>i!==index); 
+    if(nova.length) setPlaylist(nova); 
+    if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); 
+  };
 
   const handleFileSelect = (e: any) => {
     const files = Array.from(e.target.files || []);
@@ -178,8 +273,9 @@ export default function JudoPlayer() {
 
   const mudarVelocidade = () => { const r = [0.25, 0.5, 1.0, 1.5, 2.0]; const n = r[(r.indexOf(playbackRate)+1)%r.length]; setPlaybackRate(n); if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); else filePlayerRef.current.playbackRate = n; };
 
-  // -- LOGGING & FIGHT --
+  // -- REGISTRO DE EVENTOS --
   const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
+  
   const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
 
   const toggleFightState = () => {
@@ -228,7 +324,7 @@ export default function JudoPlayer() {
     setModalAberto(true);
   };
 
-  // -- DRAWING --
+  // -- SISTEMA DE DESENHO (VECTOR ENGINE) --
   const clearCanvas = () => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
@@ -266,15 +362,29 @@ export default function JudoPlayer() {
     setIsDrawingMode(newState);
     if (newState) {
       if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
-      if (playerContainerRef.current) { if (playerContainerRef.current.requestFullscreen) { playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); } else { setIsDataFullscreen(true); } }
+      // Tenta entrar em Fullscreen
+      if (playerContainerRef.current) { 
+          if (playerContainerRef.current.requestFullscreen) { 
+              playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); 
+          } else { 
+              setIsDataFullscreen(true); 
+          } 
+      }
+      // Ajusta o Canvas
       setTimeout(() => {
         if(canvasRef.current && canvasRef.current.parentElement) {
-          canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight;
-          if (loadStrokes && loadStrokes.length > 0) { setCurrentStrokes(loadStrokes); redrawStrokes(loadStrokes); }
+          canvasRef.current.width = canvasRef.current.parentElement.clientWidth; 
+          canvasRef.current.height = canvasRef.current.parentElement.clientHeight;
+          if (loadStrokes && loadStrokes.length > 0) { 
+              setCurrentStrokes(loadStrokes); 
+              redrawStrokes(loadStrokes); 
+          }
         }
       }, 100);
     } else {
-      if (document.fullscreenElement) document.exitFullscreen(); setIsDataFullscreen(false); clearCanvas();
+      if (document.fullscreenElement) document.exitFullscreen(); 
+      setIsDataFullscreen(false); 
+      clearCanvas();
     }
   };
 
@@ -287,8 +397,7 @@ export default function JudoPlayer() {
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawingMode || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
@@ -348,15 +457,14 @@ export default function JudoPlayer() {
     }
   };
 
-  // --- 3. EFEITOS (USEEFFECTS) ---
+  // ==================================================================================
+  // 3. EFEITOS (HOOKS)
+  // ==================================================================================
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (modalIA) return;
-      if (modalAberto) {
-        if (e.key === 'Escape') setModalAberto(false);
-        if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA');
-        return;
-      }
+      if (modalIA || reportMode) return;
+      if (modalAberto) { if (e.key === 'Escape') setModalAberto(false); if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA'); return; }
       if (document.activeElement?.tagName === 'INPUT') return;
 
       switch(e.code) {
@@ -374,7 +482,7 @@ export default function JudoPlayer() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive]);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive, reportMode]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -410,91 +518,7 @@ export default function JudoPlayer() {
     return () => cancelAnimationFrame(af);
   }, [isPlaying, currentVideo.type]);
 
-  const accumulatedFightTime = useMemo(() => {
-    let total = 0; let start = null;
-    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
-    for (const ev of evs) {
-      if (ev.tipo === 'HAJIME') start = ev.tempo;
-      else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) { total += (ev.tempo - start); start = null; }
-    }
-    if (start !== null && currentTime > start) total += (currentTime - start);
-    return total;
-  }, [eventos, currentTime, currentVideo.name]);
-
-  const tempoDisplay = useMemo(() => {
-    const hasHajime = eventos.some((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME');
-    if (!hasHajime) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
-    const elapsed = accumulatedFightTime;
-    if (elapsed <= 240) return { text: "TEMPO REGULAR", time: `${Math.floor((240-elapsed)/60)}:${Math.floor((240-elapsed)%60).toString().padStart(2,'0')}`, isGS: false };
-    else return { text: "GOLDEN SCORE", time: `${Math.floor((elapsed-240)/60)}:${Math.floor((elapsed-240)%60).toString().padStart(2,'0')}`, isGS: true };
-  }, [accumulatedFightTime, eventos, currentVideo.name]);
-
-  const fightStartTime = useMemo(() => {
-    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
-    return evs.length > 0 ? evs[0].tempo : 0;
-  }, [eventos, currentVideo.name]);
-
-  const placar = useMemo(() => {
-    const p = { branco: { ippon:0, waza:0, yuko:0, shido:0 }, azul: { ippon:0, waza:0, yuko:0, shido:0 } };
-    eventos.filter((ev:any) => ev.videoId === currentVideo.name).forEach((ev: any) => {
-      const q = ev.atleta === 'BRANCO' ? p.branco : p.azul;
-      if (ev.resultado === 'IPPON') q.ippon++; if (ev.resultado === 'WAZA-ARI') q.waza++; if (ev.resultado === 'YUKO') q.yuko++;
-      if (ev.categoria === 'PUNICAO') { if (ev.tipo === 'SHIDO') q.shido++; if (ev.tipo === 'HANSOKU') q.shido += 3; }
-    });
-    return p;
-  }, [eventos, currentVideo.name]);
-
-  const stats = useMemo(() => {
-    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'TECNICA');
-    const total = evs.length || 1;
-    const groups: any = {};
-    evs.forEach((e:any) => { groups[e.grupo] = (groups[e.grupo] || 0) + 1; });
-    const groupData = Object.keys(groups).map(g => ({ name: g, val: groups[g], pct: (groups[g]/total)*100, color: CORES_GRUPOS[g] })).sort((a,b)=>b.val-a.val);
-    const vol = { branco: evs.filter((e:any)=>e.atleta==='BRANCO').length, azul: evs.filter((e:any)=>e.atleta==='AZUL').length };
-    const eff = {
-        branco: (evs.filter((e:any)=>e.atleta==='BRANCO' && e.resultado !== 'NADA').length / (vol.branco || 1) * 100).toFixed(0),
-        azul: (evs.filter((e:any)=>e.atleta==='AZUL' && e.resultado !== 'NADA').length / (vol.azul || 1) * 100).toFixed(0)
-    };
-    return { groupData, vol, eff };
-  }, [eventos, currentVideo.name]);
-
-  const gerarPromptIA = () => {
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
-    const evs = eventos.filter((e:any) => e.videoId === currentVideo.name);
-    const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', ');
-    const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    const desenhos = evs.filter((e:any) => e.categoria === 'ANALISE').map((e:any) => formatTimeVideo(e.tempo)).join(', ');
-    
-    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}.
-    
-    ATENÇÃO: O técnico marcou observações visuais (desenhos) nos seguintes momentos: ${desenhos || 'Nenhum'}. Verifique o que ocorreu nesses tempos. Identifique o Tokui-waza e sugira correções táticas.`;
-    
-    setGeneratedPrompt(prompt); setCopied(false); setModalIA(true);
-  };
   const copyToClipboard = () => { navigator.clipboard.writeText(generatedPrompt); setCopied(true); };
-
-  useEffect(() => {
-    if (modalNome.length > 1) {
-      const m = Object.keys(DB_GOLPES).filter(k => k.toLowerCase().includes(modalNome.toLowerCase()));
-      setSugestoes(m.slice(0, 5));
-      const ex = m.find(k => k.toLowerCase() === modalNome.toLowerCase());
-      if (ex) setModalGrupo(DB_GOLPES[ex] as any);
-    } else setSugestoes([]);
-  }, [modalNome]);
-
-  const formatTimeVideo = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
-  const baixarCSV = () => {
-    let csv = "data:text/csv;charset=utf-8,Video;Tempo Video;Tempo Luta;Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
-    const evsByVid: any = {};
-    eventos.forEach((ev:any) => { if(!evsByVid[ev.videoId]) evsByVid[ev.videoId]=[]; evsByVid[ev.videoId].push(ev); });
-    Object.keys(evsByVid).forEach(vid => {
-        const sorted = evsByVid[vid].sort((a:any,b:any)=>a.tempo-b.tempo);
-        const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
-        sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
-    });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v16_${new Date().toISOString().slice(0,10)}.csv`; link.click();
-  };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
     let cumPct = 0; if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>;
@@ -504,15 +528,28 @@ export default function JudoPlayer() {
   const cardStyle: any = { background: THEME.card, border: `1px solid ${THEME.cardBorder}`, borderRadius: '16px', overflow: 'hidden' };
   const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' };
 
+  // ==================================================================================
+  // 4. RENDERIZAÇÃO (JSX)
+  // ==================================================================================
   return (
     <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
       
+      {/* CSS IMPRESSÃO */}
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 10mm; }
+          body { background: white !important; color: black !important; }
+          .no-print { display: none !important; }
+          .printable-report { display: block !important; position: static !important; width: 100% !important; height: auto !important; background: white !important; color: black !important; padding: 0 !important; overflow: visible !important; }
+        }
+      `}</style>
+
       {/* HEADER */}
-      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
+      <div className="no-print" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v16.0 Backup</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v17.1 Full</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -529,15 +566,92 @@ export default function JudoPlayer() {
              <input type="file" ref={backupInputRef} style={{display:'none'}} accept=".json" onChange={importarBackup} />
           </div>
 
-          <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI REPORT</button>
+          <button onClick={imprimirRelatorio} style={{...btnStyle, background: 'white', color:'black', padding:'8px 12px', fontSize: '13px', border:'none', fontWeight:'700'}}><Printer size={16}/> RELATÓRIO</button>
+          <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI</button>
           <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
           <button onClick={baixarCSV} style={{...btnStyle, background: THEME.success, color:'white', padding:'8px 16px', fontSize: '13px'}}><Download size={16}/> CSV</button>
         </div>
       </div>
 
+      {/* --- MODO RELATÓRIO (OVERLAY) --- */}
+      {reportMode && (
+        <div className="printable-report" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'white', zIndex: 99999, padding: '40px', overflowY: 'auto', color:'black' }}>
+          <div className="no-print" style={{position:'fixed', top:'20px', right:'20px', display:'flex', gap:'10px'}}>
+             <button onClick={() => window.print()} style={{...btnStyle, background:'black', color:'white', padding:'10px 20px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}><Printer size={18}/> IMPRIMIR / PDF</button>
+             <button onClick={() => setReportMode(false)} style={{...btnStyle, background:'#e2e8f0', color:'black', padding:'10px', borderRadius:'50%'}}><X size={20}/></button>
+          </div>
+
+          {/* CABEÇALHO RELATÓRIO */}
+          <div style={{borderBottom:'2px solid black', paddingBottom:'20px', marginBottom:'30px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+             <div>
+               <h1 style={{margin:0, fontSize:'28px', fontWeight:'800', letterSpacing:'-1px'}}>SMAART<span style={{color:'#3b82f6'}}>PRO</span> REPORT</h1>
+               <div style={{fontSize:'14px', color:'#666', marginTop:'5px'}}>Análise Tática e Biomecânica de Judô</div>
+             </div>
+             <div style={{textAlign:'right'}}>
+               <div style={{fontSize:'18px', fontWeight:'700'}}>{currentVideo.name}</div>
+               <div style={{fontSize:'14px', color:'#666'}}>{new Date().toLocaleDateString()}</div>
+             </div>
+          </div>
+
+          {/* PLACAR RELATÓRIO */}
+          <div style={{display:'flex', justifyContent:'center', gap:'40px', marginBottom:'40px', padding:'20px', background:'#f8fafc', borderRadius:'12px', border:'1px solid #e2e8f0'}}>
+             <div style={{textAlign:'center'}}>
+                <div style={{fontSize:'20px', fontWeight:'700', marginBottom:'10px'}}>BRANCO</div>
+                <div style={{display:'flex', gap:'15px'}}>
+                   <div><span style={{fontSize:'12px', display:'block', color:'#666'}}>IPPON</span><span style={{fontSize:'32px', fontWeight:'800'}}>{placar.branco.ippon}</span></div>
+                   <div><span style={{fontSize:'12px', display:'block', color:'#666'}}>WAZA</span><span style={{fontSize:'32px', fontWeight:'800', color:'#eab308'}}>{placar.branco.waza}</span></div>
+                   <div><span style={{fontSize:'12px', display:'block', color:'#666'}}>SHIDO</span><span style={{fontSize:'32px', fontWeight:'800', color:'#ef4444'}}>{placar.branco.shido}</span></div>
+                </div>
+             </div>
+             <div style={{width:'2px', background:'#cbd5e1'}}></div>
+             <div style={{textAlign:'center'}}>
+                <div style={{fontSize:'20px', fontWeight:'700', marginBottom:'10px', color:'#3b82f6'}}>AZUL</div>
+                <div style={{display:'flex', gap:'15px'}}>
+                   <div><span style={{fontSize:'12px', display:'block', color:'#666'}}>IPPON</span><span style={{fontSize:'32px', fontWeight:'800'}}>{placar.azul.ippon}</span></div>
+                   <div><span style={{fontSize:'12px', display:'block', color:'#666'}}>WAZA</span><span style={{fontSize:'32px', fontWeight:'800', color:'#eab308'}}>{placar.azul.waza}</span></div>
+                   <div><span style={{fontSize:'12px', display:'block', color:'#666'}}>SHIDO</span><span style={{fontSize:'32px', fontWeight:'800', color:'#ef4444'}}>{placar.azul.shido}</span></div>
+                </div>
+             </div>
+          </div>
+
+          {/* ANÁLISE IA */}
+          <div style={{marginBottom:'40px'}}>
+             <h3 style={{fontSize:'16px', fontWeight:'700', borderBottom:'1px solid #e2e8f0', paddingBottom:'8px', marginBottom:'15px'}}>RESUMO TÁTICO</h3>
+             <div style={{fontSize:'14px', lineHeight:'1.6', color:'#334155', background:'#f1f5f9', padding:'20px', borderRadius:'8px'}}>{generatedPrompt || "Nenhuma análise gerada. Clique no botão AI antes de imprimir."}</div>
+          </div>
+
+          {/* TIMELINE */}
+          <div>
+             <h3 style={{fontSize:'16px', fontWeight:'700', borderBottom:'1px solid #e2e8f0', paddingBottom:'8px', marginBottom:'15px'}}>TIMELINE DA LUTA</h3>
+             <table style={{width:'100%', borderCollapse:'collapse', fontSize:'13px'}}>
+               <thead>
+                 <tr style={{background:'#f8fafc', color:'#64748b', textAlign:'left'}}>
+                   <th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>TEMPO</th>
+                   <th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>CATEGORIA</th>
+                   <th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>AÇÃO</th>
+                   <th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>ATLETA</th>
+                   <th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>RESULTADO</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {eventos.filter((e:any) => e.videoId === currentVideo.name).map((ev:any) => (
+                   <tr key={ev.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                     <td style={{padding:'10px', fontFamily:'monospace'}}>{formatTimeVideo(ev.tempo)}</td>
+                     <td style={{padding:'10px', fontSize:'11px', fontWeight:'700', color: ev.categoria==='PUNICAO'?'#ef4444':'#334155'}}>{ev.categoria}</td>
+                     <td style={{padding:'10px'}}>{ev.especifico || ev.tipo}</td>
+                     <td style={{padding:'10px'}}>{ev.atleta}</td>
+                     <td style={{padding:'10px', fontWeight:'700'}}>{ev.resultado !== 'NADA' ? ev.resultado : '-'}</td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+          </div>
+        </div>
+      )}
+
       {/* --- MODAL IA --- */}
       {modalIA && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '600px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h2 style={{margin:0, color: '#a855f7', fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Bot size={24}/> RELATÓRIO INTELIGENTE</h2><button onClick={() => setModalIA(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button></div>
             <div style={{background: THEME.surface, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, fontSize:'12px', fontFamily:'monospace', whiteSpace:'pre-wrap', maxHeight:'300px', overflowY:'auto', marginBottom:'20px'}}>{generatedPrompt}</div>
@@ -548,7 +662,7 @@ export default function JudoPlayer() {
 
       {/* --- MODAL REGISTRO --- */}
       {modalAberto && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
               <h2 style={{margin:0, color: punicaoMode ? THEME.danger : THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
@@ -593,7 +707,7 @@ export default function JudoPlayer() {
       )}
 
       {/* ÁREA PRINCIPAL */}
-      <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row' }}>
+      <div className="no-print" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row' }}>
         
         {/* COLUNA ESQUERDA */}
         <div style={{ flex: 3, width: '100%' }}>
@@ -665,7 +779,7 @@ export default function JudoPlayer() {
         </div>
 
         {/* COLUNA DIREITA */}
-        <div style={{ flex: 2, width: '100%', display:'flex', flexDirection:'column', gap:'20px' }}>
+        <div className="no-print" style={{ flex: 2, width: '100%', display:'flex', flexDirection:'column', gap:'20px' }}>
           
           {showPlaylist && (
             <div style={{ ...cardStyle, padding: '12px', maxHeight: '200px', overflowY: 'auto' }}>
@@ -708,7 +822,7 @@ export default function JudoPlayer() {
           <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
               <div style={{display:'flex', alignItems:'center', gap:'8px'}}><h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3><Keyboard size={12} color={THEME.textDim}/></div>
-              <button onClick={()=>setEventos(eventos.filter(e => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
+              <button onClick={()=>setEventos(eventos.filter((e:any) => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
             </div>
             <div style={{ ...cardStyle, flex:1, padding: '8px', minHeight: '200px', overflowY: 'auto', background: THEME.surface }}>
               {eventos.filter(e => e.videoId === currentVideo.name).map((ev: any) => (
