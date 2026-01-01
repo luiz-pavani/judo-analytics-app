@@ -7,19 +7,24 @@ import {
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
   PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
   FileJson, UploadCloud, Printer, SkipBack, SkipForward, Hand,
-  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Compass, Trophy // Novo ícone Trophy
+  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Compass, Trophy, Layers // Novo ícone Layers
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
 const THEME = {
   bg: '#0f172a', card: '#1e293b', cardBorder: '#334155', text: '#f8fafc', textDim: '#94a3b8',
-  primary: '#3b82f6', primaryHover: '#2563eb', danger: '#ef4444', success: '#10b981', warning: '#eab308', surface: '#020617', neutral: '#64748b'
+  primary: '#3b82f6', primaryHover: '#2563eb', danger: '#ef4444', success: '#10b981', warning: '#eab308', surface: '#020617', neutral: '#64748b',
+  newaza: '#14b8a6' // Cor Teal para Ne-Waza
 };
 
 // --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
 const DB_PEGADAS = ["Gola", "Manga", "Gola Alta", "Costas", "Faixa", "Pistola", "Cruzada", "Sem Pegada"];
-const DB_FASES = ["Eliminatória", "Oitavas", "Quartas", "Semi-Final", "Final", "Repescagem", "Bronze"]; // NOVO
+const DB_FASES = ["Eliminatória", "Oitavas", "Quartas", "Semi-Final", "Final", "Repescagem", "Bronze"];
+const DB_NW_ACOES_TOP = ["Virada (Turnover)", "Passagem de Guarda", "Ataque Chave/Estrang.", "Manutenção (Pin)"];
+const DB_NW_ACOES_BOTTOM = ["Reposição de Guarda", "Raspagem (Sweep)", "Tentativa Finalização", "Escape"];
+const DB_NW_DESFECHOS = ["Matte (Sem Ponto)", "Osaekomi", "Finalização (Ippon)", "Progressão"];
+
 const DB_GOLPES: Record<string, string> = {
   "seoi-nage": "TE-WAZA", "ippon-seoi-nage": "TE-WAZA", "seoi-otoshi": "TE-WAZA", "tai-otoshi": "TE-WAZA", "kata-guruma": "TE-WAZA", "sukui-nage": "TE-WAZA", "obi-otoshi": "TE-WAZA", "uki-otoshi": "TE-WAZA", "sumi-otoshi": "TE-WAZA", "yama-arashi": "TE-WAZA", "obi-tori-gaeshi": "TE-WAZA", "morote-gari": "TE-WAZA", "kuchiki-taoshi": "TE-WAZA", "kibisu-gaeshi": "TE-WAZA", "uchi-mata-sukashi": "TE-WAZA", "kouchi-gaeshi": "TE-WAZA",
   "uki-goshi": "KOSHI-WAZA", "ō-goshi": "KOSHI-WAZA", "koshi-guruma": "KOSHI-WAZA", "tsurikomi-goshi": "KOSHI-WAZA", "sode-tsurikomi-goshi": "KOSHI-WAZA", "harai-goshi": "KOSHI-WAZA", "tsuri-goshi": "KOSHI-WAZA", "hane-goshi": "KOSHI-WAZA", "utsuri-goshi": "KOSHI-WAZA", "ushiro-goshi": "KOSHI-WAZA",
@@ -30,15 +35,11 @@ const DB_GOLPES: Record<string, string> = {
   "ude-garami": "KANSETSU-WAZA", "ude-hishigi-jūji-gatame": "KANSETSU-WAZA", "ude-hishigi-ude-gatame": "KANSETSU-WAZA", "ude-hishigi-hiza-gatame": "KANSETSU-WAZA", "ude-hishigi-waki-gatame": "KANSETSU-WAZA", "ude-hishigi-hara-gatame": "KANSETSU-WAZA", "ude-hishigi-ashi-gatame": "KANSETSU-WAZA", "ude-hishigi-te-gatame": "KANSETSU-WAZA", "ude-hishigi-sankaku-gatame": "KANSETSU-WAZA", "ashi-garami": "KANSETSU-WAZA"
 };
 
-const CORES_GRUPOS: any = { 
-  "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", 
-  "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", 
-  "KANSETSU-WAZA": "#ec4899" 
-};
+const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", "KANSETSU-WAZA": "#ec4899" };
 
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 type LoopRange = { start: number; end: number } | null;
-type VideoMetadata = { eventName: string; date: string; category: string; phase: string; location: string }; // NOVO TIPO
+type VideoMetadata = { eventName: string; date: string; category: string; phase: string; location: string };
 
 export default function JudoPlayer() {
   // --- REFS ---
@@ -63,10 +64,9 @@ export default function JudoPlayer() {
   const [isDataFullscreen, setIsDataFullscreen] = useState(false); 
   const [loopRange, setLoopRange] = useState<LoopRange>(null);
 
-  // --- STATE: METADADOS (NOVO v21) ---
+  // --- STATE: METADADOS ---
   const [metadataMap, setMetadataMap] = useState<Record<string, VideoMetadata>>({}); 
   const [modalMetadata, setModalMetadata] = useState(false);
-  // Form temporário
   const [metaEvent, setMetaEvent] = useState('');
   const [metaDate, setMetaDate] = useState('');
   const [metaCat, setMetaCat] = useState('');
@@ -96,6 +96,14 @@ export default function JudoPlayer() {
   const [kumiDir, setKumiDir] = useState('Gola');
   const [kumiEsq, setKumiEsq] = useState('Manga');
 
+  // --- NE-WAZA STATE (NOVO v22) ---
+  const [modalNeWaza, setModalNeWaza] = useState(false);
+  const [nwAtleta, setNwAtleta] = useState('BRANCO');
+  const [nwEntrada, setNwEntrada] = useState('DIRETA'); // Direta vs Pausa
+  const [nwPosicao, setNwPosicao] = useState('TOP'); // Top vs Bottom
+  const [nwAcao, setNwAcao] = useState(DB_NW_ACOES_TOP[0]);
+  const [nwDesfecho, setNwDesfecho] = useState('Matte (Sem Ponto)');
+
   // --- DADOS REGISTRO ---
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
@@ -111,9 +119,9 @@ export default function JudoPlayer() {
 
   // --- DATABASE ---
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v21') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v22') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v21', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v22', JSON.stringify(eventos)); }, [eventos]);
   
   // Persistência de Metadados
   useEffect(() => {
@@ -202,7 +210,7 @@ export default function JudoPlayer() {
     return `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
   };
 
-  // -- METADATA MANAGEMENT (NOVO v21) --
+  // -- METADATA MANAGEMENT --
   const openMetadataModal = () => {
     setMetaEvent(currentMetadata.eventName);
     setMetaDate(currentMetadata.date);
@@ -218,15 +226,13 @@ export default function JudoPlayer() {
   };
 
   const applyMetadataToAll = () => {
-    if (confirm("Aplicar estes dados (Evento/Data/Categ) para TODOS os vídeos da playlist?")) {
+    if (confirm("Aplicar estes dados para TODOS os vídeos da playlist?")) {
         const newMap = { ...metadataMap };
         const commonMeta = { eventName: metaEvent, date: metaDate, category: metaCat, phase: metaPhase, location: '' };
-        playlist.forEach(vid => {
-            newMap[vid.id] = commonMeta;
-        });
+        playlist.forEach(vid => { newMap[vid.id] = commonMeta; });
         setMetadataMap(newMap);
         setModalMetadata(false);
-        alert("Dados replicados com sucesso!");
+        alert("Dados replicados!");
     }
   };
 
@@ -235,6 +241,37 @@ export default function JudoPlayer() {
   
   const abrirKumiKata = () => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); setTempoCapturado(currentTime); setKumiAtleta('BRANCO'); setModalKumi(true); };
   const salvarKumiKata = () => { const detalhe = `${kumiBase} (D:${kumiDir} / E:${kumiEsq})`; const dados = { id: Date.now(), videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'KUMI-KATA', tipo: 'PEGADA', especifico: detalhe, atleta: kumiAtleta, lado: '-', corTecnica: kumiAtleta === 'AZUL' ? THEME.primary : '#ffffff' }; setEventos((prev:any) => [dados, ...prev]); setModalKumi(false); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.playVideo(); else filePlayerRef.current?.play(); };
+
+  // -- NE-WAZA ACTIONS (NOVO v22) --
+  const abrirNeWaza = () => {
+     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
+     setTempoCapturado(currentTime);
+     setNwAtleta('BRANCO');
+     setNwEntrada('DIRETA');
+     setNwPosicao('TOP');
+     setNwAcao(DB_NW_ACOES_TOP[0]);
+     setNwDesfecho('Matte (Sem Ponto)');
+     setModalNeWaza(true);
+  };
+
+  const salvarNeWaza = () => {
+     const detalhe = `${nwEntrada} | ${nwPosicao} > ${nwAcao}`;
+     const dados = { 
+        id: Date.now(), 
+        videoId: currentVideo.name, 
+        tempo: tempoCapturado, 
+        categoria: 'NE-WAZA', 
+        tipo: nwPosicao, 
+        especifico: detalhe,
+        resultado: nwDesfecho, 
+        atleta: nwAtleta, 
+        lado: '-', 
+        corTecnica: THEME.newaza 
+     };
+     setEventos((prev:any) => [dados, ...prev]);
+     setModalNeWaza(false);
+     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.playVideo(); else filePlayerRef.current?.play();
+  };
 
   const toggleFightState = () => { if (isFightActive) registrarFluxo('MATE'); else registrarFluxo('HAJIME'); };
   const stepFrame = (frames: number) => { const frameTime = 0.05; const newTime = currentTime + (frames * frameTime); if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) { youtubePlayerRef.current.seekTo(newTime, true); } else if (filePlayerRef.current) { filePlayerRef.current.currentTime = newTime; } setCurrentTime(newTime); };
@@ -273,6 +310,7 @@ export default function JudoPlayer() {
   const iniciarRegistroPunicaoTeclado = (tipo: 'SHIDO' | 'HANSOKU') => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); let t = currentTime; if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime; setEditingEventId(null); setTempoCapturado(t); setPunicaoMode(tipo); setModalAberto(true); };
   const editarEvento = (ev: any) => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause(); setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); if (ev.categoria === 'PUNICAO') { setPunicaoMode(ev.tipo); setMotivoShido(ev.especifico); } else { setPunicaoMode(null); setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico); setModalGrupo(ev.grupo || 'TE-WAZA'); setResultadoPreSelecionado(ev.resultado); setModalDirecao(ev.direcao || 'FRENTE'); } setModalAberto(true); };
 
+  // --- DRAWING ---
   const clearCanvas = () => { if (canvasRef.current) { const ctx = canvasRef.current.getContext('2d'); if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); } setCurrentStrokes([]); };
   const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string) => { const headLength = 20; const angle = Math.atan2(toY - fromY, toX - fromX); ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); ctx.beginPath(); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke(); };
   const redrawStrokes = (strokesToDraw: any[]) => { if (!canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); strokesToDraw.forEach(stroke => { ctx.strokeStyle = stroke.color; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; if (stroke.tool === 'PEN') { ctx.beginPath(); if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); } ctx.stroke(); } else if (stroke.tool === 'ARROW') { if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color); } } }); };
@@ -295,10 +333,9 @@ export default function JudoPlayer() {
           const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0; 
           sorted.forEach((e:any) => { csv+=`${e.videoId};${meta.eventName};${meta.date};${meta.phase};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.direcao||'-'};${e.grupo||e.tipo}\n`; }); 
       }); 
-      const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v21_${new Date().toISOString().slice(0,10)}.csv`; link.click(); 
+      const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v22_${new Date().toISOString().slice(0,10)}.csv`; link.click(); 
   };
-  
-  const exportarBackup = () => { const dadosBackup = { version: '21.0', timestamp: new Date().toISOString(), playlist, eventos, metadata: metadataMap }; const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+  const exportarBackup = () => { const dadosBackup = { version: '22.0', timestamp: new Date().toISOString(), playlist, eventos, metadata: metadataMap }; const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
   const importarBackup = (e: any) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const json = JSON.parse(event.target?.result as string); if (json.eventos && Array.isArray(json.eventos)) { if (confirm("ATENÇÃO: Isso substituirá todos os dados atuais. Deseja continuar?")) { setEventos(json.eventos); if (json.playlist) { setPlaylist(json.playlist); setCurrentVideoIndex(0); } if(json.metadata) setMetadataMap(json.metadata); alert("Backup restaurado! 🥋"); } } else alert("Arquivo inválido."); } catch (err) { alert("Erro ao ler JSON."); } }; reader.readAsText(file); e.target.value = null; };
   const imprimirRelatorio = () => { setReportMode(true); setTimeout(() => { window.print(); }, 500); };
   const gerarPromptIA = () => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); const evs = eventos.filter((e:any) => e.videoId === currentVideo.name); const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', '); const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', '); const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', '); const desenhos = evs.filter((e:any) => e.categoria === 'ANALISE').map((e:any) => formatTimeVideo(e.tempo)).join(', '); const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}. ATENÇÃO: O técnico marcou observações visuais (desenhos) nos seguintes momentos: ${desenhos || 'Nenhum'}. Verifique o que ocorreu nesses tempos. Identifique o Tokui-waza e sugira correções táticas.`; setGeneratedPrompt(prompt); setCopied(false); setModalIA(true); };
@@ -306,7 +343,7 @@ export default function JudoPlayer() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (modalIA || reportMode || modalKumi || modalMetadata) return;
+      if (modalIA || reportMode || modalKumi || modalMetadata || modalNeWaza) return;
       if (modalAberto) { if (e.key === 'Escape') { setModalAberto(false); } if (e.key === 'Enter' && !punicaoMode && modalAberto) confirmarEContinuar(resultadoPreSelecionado || 'NADA'); return; }
       if (document.activeElement?.tagName === 'INPUT') return;
       switch(e.code) {
@@ -324,7 +361,7 @@ export default function JudoPlayer() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive, reportMode, modalKumi, modalMetadata]);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive, reportMode, modalKumi, modalMetadata, modalNeWaza]);
 
   useEffect(() => { const handleResize = () => { setIsMobile(window.innerWidth < 800); if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (currentStrokes.length > 0) redrawStrokes(currentStrokes); } }; window.addEventListener('resize', handleResize); const handleFsChange = () => { if (!document.fullscreenElement && isDrawingMode) { setTimeout(handleResize, 100); } }; document.addEventListener('fullscreenchange', handleFsChange); return () => { window.removeEventListener('resize', handleResize); document.removeEventListener('fullscreenchange', handleFsChange); } }, [isDrawingMode, currentStrokes]);
   const onReady = (e: any) => { youtubePlayerRef.current = e.target; setDuration(e.target.getDuration()); };
@@ -347,7 +384,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v21.0 Context</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v22.0 Ne-Waza</span>
         </h1>
         <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -373,7 +410,7 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* --- MODAL METADATA (NOVO v21) --- */}
+      {/* --- MODAL METADATA --- */}
       {modalMetadata && (
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
@@ -410,6 +447,56 @@ export default function JudoPlayer() {
                <button onClick={saveMetadata} style={{...btnStyle, flex:1, padding:'12px', background: THEME.primary, color:'white', fontWeight:'700'}}>SALVAR NESTE VÍDEO</button>
                <button onClick={applyMetadataToAll} style={{...btnStyle, flex:1, padding:'12px', background: THEME.surface, border:`1px solid ${THEME.primary}`, color:THEME.primary, fontWeight:'700'}}>APLICAR A TODOS</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL NE-WAZA (NOVO v22) --- */}
+      {modalNeWaza && (
+        <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ ...cardStyle, width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
+            <div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`, marginBottom:'20px'}}>
+               <button onClick={() => setNwAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: nwAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:nwAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ BRANCO</button>
+               <button onClick={() => setNwAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: nwAtleta==='AZUL'?THEME.primary:THEME.surface, color:nwAtleta==='AZUL'?'white':THEME.textDim}}>🔵 AZUL</button>
+            </div>
+
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+              <h2 style={{margin:0, color: THEME.newaza, fontSize:'18px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Layers size={20}/> ANÁLISE DE SOLO</h2>
+              <button onClick={() => setModalNeWaza(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'6px', borderRadius:'50%'}}><X size={18}/></button>
+            </div>
+            
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px', marginBottom:'15px'}}>
+               <div>
+                  <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>ENTRADA</div>
+                  <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
+                     <button onClick={() => setNwEntrada('DIRETA')} style={{...btnStyle, padding:'8px', background: nwEntrada==='DIRETA'?THEME.success:THEME.surface, color:nwEntrada==='DIRETA'?'white':THEME.textDim, fontSize:'11px'}}>DIRETA (Conexão)</button>
+                     <button onClick={() => setNwEntrada('PAUSA')} style={{...btnStyle, padding:'8px', background: nwEntrada==='PAUSA'?THEME.warning:THEME.surface, color:nwEntrada==='PAUSA'?'black':THEME.textDim, fontSize:'11px'}}>PAUSA (Estudo)</button>
+                  </div>
+               </div>
+               <div>
+                  <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>POSIÇÃO</div>
+                  <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
+                     <button onClick={() => {setNwPosicao('TOP'); setNwAcao(DB_NW_ACOES_TOP[0])}} style={{...btnStyle, padding:'8px', background: nwPosicao==='TOP'?THEME.primary:THEME.surface, color:nwPosicao==='TOP'?'white':THEME.textDim, fontSize:'11px'}}>TOP (Por Cima)</button>
+                     <button onClick={() => {setNwPosicao('BOTTOM'); setNwAcao(DB_NW_ACOES_BOTTOM[0])}} style={{...btnStyle, padding:'8px', background: nwPosicao==='BOTTOM'?THEME.danger:THEME.surface, color:nwPosicao==='BOTTOM'?'white':THEME.textDim, fontSize:'11px'}}>BOTTOM (Por Baixo)</button>
+                  </div>
+               </div>
+            </div>
+
+            <div style={{marginBottom:'15px'}}>
+               <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>AÇÃO ESPECÍFICA</div>
+               <select value={nwAcao} onChange={(e) => setNwAcao(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.newaza}`}}>
+                  {(nwPosicao === 'TOP' ? DB_NW_ACOES_TOP : DB_NW_ACOES_BOTTOM).map(a => <option key={a} value={a}>{a}</option>)}
+               </select>
+            </div>
+
+            <div style={{marginBottom:'24px'}}>
+               <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>DESFECHO</div>
+               <select value={nwDesfecho} onChange={(e) => setNwDesfecho(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
+                  {DB_NW_DESFECHOS.map(d => <option key={d} value={d}>{d}</option>)}
+               </select>
+            </div>
+
+            <button onClick={salvarNeWaza} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.newaza, color:'white', fontSize:'16px', fontWeight:'700'}}>REGISTRAR SOLO</button>
           </div>
         </div>
       )}
@@ -457,51 +544,7 @@ export default function JudoPlayer() {
         </div>
       )}
 
-      {/* --- MODO RELATÓRIO (OVERLAY) --- */}
-      {reportMode && (
-        <div className="printable-report" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'white', zIndex: 99999, padding: '40px', overflowY: 'auto', color:'black' }}>
-          <div className="no-print" style={{position:'fixed', top:'20px', right:'20px', display:'flex', gap:'10px'}}>
-             <button onClick={() => window.print()} style={{...btnStyle, background:'black', color:'white', padding:'10px 20px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}><Printer size={18}/> IMPRIMIR / PDF</button>
-             <button onClick={() => setReportMode(false)} style={{...btnStyle, background:'#e2e8f0', color:'black', padding:'10px', borderRadius:'50%'}}><X size={20}/></button>
-          </div>
-          <div style={{borderBottom:'2px solid black', paddingBottom:'20px', marginBottom:'30px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-             <div>
-                <h1 style={{margin:0, fontSize:'28px', fontWeight:'800', letterSpacing:'-1px'}}>SMAART<span style={{color:'#3b82f6'}}>PRO</span> REPORT</h1>
-                <div style={{fontSize:'14px', color:'#666', marginTop:'5px'}}>Análise Tática e Biomecânica de Judô</div>
-             </div>
-             <div style={{textAlign:'right'}}>
-               <div style={{fontSize:'18px', fontWeight:'700'}}>{currentMetadata.eventName}</div>
-               <div style={{fontSize:'14px', color:'#666'}}>{currentMetadata.date} - {currentMetadata.category} ({currentMetadata.phase})</div>
-             </div>
-          </div>
-          <div style={{display:'flex', justifyContent:'center', gap:'40px', marginBottom:'40px', padding:'20px', background:'#f8fafc', borderRadius:'12px', border:'1px solid #e2e8f0'}}>
-             <div style={{textAlign:'center'}}><div style={{fontSize:'20px', fontWeight:'700', marginBottom:'10px'}}>BRANCO</div><div style={{display:'flex', gap:'15px'}}><div><span style={{fontSize:'12px', display:'block', color:'#666'}}>IPPON</span><span style={{fontSize:'32px', fontWeight:'800'}}>{placar.branco.ippon}</span></div><div><span style={{fontSize:'12px', display:'block', color:'#666'}}>WAZA</span><span style={{fontSize:'32px', fontWeight:'800', color:'#eab308'}}>{placar.branco.waza}</span></div><div><span style={{fontSize:'12px', display:'block', color:'#666'}}>SHIDO</span><span style={{fontSize:'32px', fontWeight:'800', color:'#ef4444'}}>{placar.branco.shido}</span></div></div></div>
-             <div style={{width:'2px', background:'#cbd5e1'}}></div>
-             <div style={{textAlign:'center'}}><div style={{fontSize:'20px', fontWeight:'700', marginBottom:'10px', color:'#3b82f6'}}>AZUL</div><div style={{display:'flex', gap:'15px'}}><div><span style={{fontSize:'12px', display:'block', color:'#666'}}>IPPON</span><span style={{fontSize:'32px', fontWeight:'800'}}>{placar.azul.ippon}</span></div><div><span style={{fontSize:'12px', display:'block', color:'#666'}}>WAZA</span><span style={{fontSize:'32px', fontWeight:'800', color:'#eab308'}}>{placar.azul.waza}</span></div><div><span style={{fontSize:'12px', display:'block', color:'#666'}}>SHIDO</span><span style={{fontSize:'32px', fontWeight:'800', color:'#ef4444'}}>{placar.azul.shido}</span></div></div></div>
-          </div>
-          <div style={{marginBottom:'40px'}}><h3 style={{fontSize:'16px', fontWeight:'700', borderBottom:'1px solid #e2e8f0', paddingBottom:'8px', marginBottom:'15px'}}>RESUMO TÁTICO</h3><div style={{fontSize:'14px', lineHeight:'1.6', color:'#334155', background:'#f1f5f9', padding:'20px', borderRadius:'8px'}}>{generatedPrompt || "Nenhuma análise gerada. Clique no botão AI antes de imprimir."}</div></div>
-          <div>
-             <h3 style={{fontSize:'16px', fontWeight:'700', borderBottom:'1px solid #e2e8f0', paddingBottom:'8px', marginBottom:'15px'}}>TIMELINE DA LUTA</h3>
-             <table style={{width:'100%', borderCollapse:'collapse', fontSize:'13px'}}>
-               <thead><tr style={{background:'#f8fafc', color:'#64748b', textAlign:'left'}}><th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>TEMPO</th><th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>CATEGORIA</th><th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>AÇÃO</th><th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>ATLETA</th><th style={{padding:'10px', borderBottom:'1px solid #e2e8f0'}}>RESULTADO</th></tr></thead>
-               <tbody>{eventos.filter((e:any) => e.videoId === currentVideo.name).map((ev:any) => (<tr key={ev.id} style={{borderBottom:'1px solid #f1f5f9'}}><td style={{padding:'10px', fontFamily:'monospace'}}>{formatTimeVideo(ev.tempo)}</td><td style={{padding:'10px', fontSize:'11px', fontWeight:'700', color: ev.categoria==='PUNICAO'?'#ef4444':'#334155'}}>{ev.categoria}</td><td style={{padding:'10px'}}>{ev.especifico || ev.tipo}</td><td style={{padding:'10px'}}>{ev.atleta}</td><td style={{padding:'10px', fontWeight:'700'}}>{ev.resultado !== 'NADA' ? ev.resultado : '-'}</td></tr>))}</tbody>
-             </table>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL IA (EXISTENTE) --- */}
-      {modalIA && (
-        <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ ...cardStyle, width: '100%', maxWidth: '600px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h2 style={{margin:0, color: '#a855f7', fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Bot size={24}/> RELATÓRIO INTELIGENTE</h2><button onClick={() => setModalIA(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button></div>
-            <div style={{background: THEME.surface, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, fontSize:'12px', fontFamily:'monospace', whiteSpace:'pre-wrap', maxHeight:'300px', overflowY:'auto', marginBottom:'20px'}}>{generatedPrompt}</div>
-            <div style={{display:'flex', justifyContent:'flex-end'}}><button onClick={copyToClipboard} style={{...btnStyle, padding: '12px 24px', background: copied ? THEME.success : '#a855f7', color: 'white', fontSize:'14px'}}>{copied ? <><Check size={18}/> COPIADO!</> : <><Copy size={18}/> COPIAR PARA CHATGPT</>}</button></div>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL REGISTRO --- */}
+      {/* --- MODAL REGISTRO (WAZA) COM D-PAD --- */}
       {modalAberto && (
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
@@ -658,6 +701,9 @@ export default function JudoPlayer() {
              <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, flex: 2, padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`}}>
                <CheckCircle size={28}/> WAZA
              </button>
+             <button onClick={abrirNeWaza} style={{...btnStyle, flex: 1, padding:'24px', background: THEME.card, border: `1px solid ${THEME.newaza}`, color: THEME.newaza, fontSize:'16px'}}>
+               <Layers size={24}/> NE-WAZA
+             </button>
              <button onClick={abrirKumiKata} style={{...btnStyle, flex: 1, padding:'24px', background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: '#f59e0b', fontSize:'16px'}}>
                <Hand size={24}/> KUMI-KATA
              </button>
@@ -706,7 +752,7 @@ export default function JudoPlayer() {
             </div></div>
           </div>
 
-          {/* DASHBOARD RADAR DE ATAQUE (NOVO v20) */}
+          {/* DASHBOARD RADAR DE ATAQUE (v20) */}
           <div style={{ ...cardStyle, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                <div style={{fontSize:'12px', color: THEME.textDim, fontWeight:'600', display:'flex', alignItems:'center', gap:'6px'}}><Compass size={16}/> RADAR DE ATAQUE</div>
@@ -772,6 +818,7 @@ export default function JudoPlayer() {
                     <div style={{fontWeight:'600', color: ev.atleta === 'AZUL' ? THEME.primary : (ev.categoria==='FLUXO' ? THEME.textDim : 'white'), fontSize: '14px'}}>
                       {ev.categoria === 'ANALISE' && <span style={{marginRight:'5px'}}>🖌️</span>}
                       {ev.categoria === 'KUMI-KATA' && <span style={{marginRight:'5px'}}>✋</span>}
+                      {ev.categoria === 'NE-WAZA' && <span style={{marginRight:'5px'}}>🤼</span>}
                       {ev.especifico || ev.tipo}
                       {ev.direcao && <span style={{marginLeft:'5px', fontSize:'10px', background: THEME.surface, padding:'2px 4px', borderRadius:'3px'}}>{ev.direcao === 'FRENTE' ? '⬆️' : ev.direcao === 'TRAS' ? '⬇️' : ev.direcao === 'ESQUERDA' ? '⬅️' : '➡️'}</span>}
                     </div>
