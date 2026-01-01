@@ -7,35 +7,44 @@ import {
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
   PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
   FileJson, UploadCloud, Printer, SkipBack, SkipForward, Hand,
-  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Compass, Trophy, Layers // Novo ícone Layers
+  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Compass, Trophy, Layers, Tornado // Novo ícone Tornado
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
 const THEME = {
   bg: '#0f172a', card: '#1e293b', cardBorder: '#334155', text: '#f8fafc', textDim: '#94a3b8',
   primary: '#3b82f6', primaryHover: '#2563eb', danger: '#ef4444', success: '#10b981', warning: '#eab308', surface: '#020617', neutral: '#64748b',
-  newaza: '#14b8a6' // Cor Teal para Ne-Waza
+  newaza: '#14b8a6' 
 };
 
 // --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
 const DB_PEGADAS = ["Gola", "Manga", "Gola Alta", "Costas", "Faixa", "Pistola", "Cruzada", "Sem Pegada"];
 const DB_FASES = ["Eliminatória", "Oitavas", "Quartas", "Semi-Final", "Final", "Repescagem", "Bronze"];
+
+// NE-WAZA ACTIONS
 const DB_NW_ACOES_TOP = ["Virada (Turnover)", "Passagem de Guarda", "Ataque Chave/Estrang.", "Manutenção (Pin)"];
 const DB_NW_ACOES_BOTTOM = ["Reposição de Guarda", "Raspagem (Sweep)", "Tentativa Finalização", "Escape"];
 const DB_NW_DESFECHOS = ["Matte (Sem Ponto)", "Osaekomi", "Finalização (Ippon)", "Progressão"];
 
+// LISTA ESPECÍFICA DE TÉCNICAS DE SOLO (REMOVIDAS DO GERAL)
+const DB_NE_WAZA_LIST: Record<string, string> = {
+  "kesa-gatame": "OSAEKOMI", "kuzure-kesa-gatame": "OSAEKOMI", "ushiro-kesa-gatame": "OSAEKOMI", "kata-gatame": "OSAEKOMI", "kami-shihō-gatame": "OSAEKOMI", "kuzure-kami-shihō-gatame": "OSAEKOMI", "yoko-shihō-gatame": "OSAEKOMI", "tate-shihō-gatame": "OSAEKOMI", "uki-gatame": "OSAEKOMI", "ura-gatame": "OSAEKOMI",
+  "nami-jūji-jime": "SHIME", "gyaku-jūji-jime": "SHIME", "kata-jūji-jime": "SHIME", "hadaka-jime": "SHIME", "okuri-eri-jime": "SHIME", "kataha-jime": "SHIME", "katate-jime": "SHIME", "ryōte-jime": "SHIME", "sode-guruma-jime": "SHIME", "tsukkomi-jime": "SHIME", "sankaku-jime": "SHIME", "dō-jime": "SHIME",
+  "ude-garami": "KANSETSU", "ude-hishigi-jūji-gatame": "KANSETSU", "ude-hishigi-ude-gatame": "KANSETSU", "ude-hishigi-hiza-gatame": "KANSETSU", "ude-hishigi-waki-gatame": "KANSETSU", "ude-hishigi-hara-gatame": "KANSETSU", "ude-hishigi-ashi-gatame": "KANSETSU", "ude-hishigi-te-gatame": "KANSETSU", "ude-hishigi-sankaku-gatame": "KANSETSU", "ashi-garami": "KANSETSU"
+};
+
+// LISTA FILTRADA APENAS NAGE-WAZA (EM PÉ)
 const DB_GOLPES: Record<string, string> = {
   "seoi-nage": "TE-WAZA", "ippon-seoi-nage": "TE-WAZA", "seoi-otoshi": "TE-WAZA", "tai-otoshi": "TE-WAZA", "kata-guruma": "TE-WAZA", "sukui-nage": "TE-WAZA", "obi-otoshi": "TE-WAZA", "uki-otoshi": "TE-WAZA", "sumi-otoshi": "TE-WAZA", "yama-arashi": "TE-WAZA", "obi-tori-gaeshi": "TE-WAZA", "morote-gari": "TE-WAZA", "kuchiki-taoshi": "TE-WAZA", "kibisu-gaeshi": "TE-WAZA", "uchi-mata-sukashi": "TE-WAZA", "kouchi-gaeshi": "TE-WAZA",
   "uki-goshi": "KOSHI-WAZA", "ō-goshi": "KOSHI-WAZA", "koshi-guruma": "KOSHI-WAZA", "tsurikomi-goshi": "KOSHI-WAZA", "sode-tsurikomi-goshi": "KOSHI-WAZA", "harai-goshi": "KOSHI-WAZA", "tsuri-goshi": "KOSHI-WAZA", "hane-goshi": "KOSHI-WAZA", "utsuri-goshi": "KOSHI-WAZA", "ushiro-goshi": "KOSHI-WAZA",
   "de-ashi-harai": "ASHI-WAZA", "hiza-guruma": "ASHI-WAZA", "sasae-tsurikomi-ashi": "ASHI-WAZA", "ō-soto-gari": "ASHI-WAZA", "ō-uchi-gari": "ASHI-WAZA", "ko-soto-gari": "ASHI-WAZA", "ko-uchi-gari": "ASHI-WAZA", "okuri-ashi-harai": "ASHI-WAZA", "uchi-mata": "ASHI-WAZA", "ko-soto-gake": "ASHI-WAZA", "ashi-guruma": "ASHI-WAZA", "harai-tsurikomi-ashi": "ASHI-WAZA", "ō-guruma": "ASHI-WAZA", "ō-soto-guruma": "ASHI-WAZA", "ō-soto-otoshi": "ASHI-WAZA", "tsubame-gaeshi": "ASHI-WAZA", "ō-soto-gaeshi": "ASHI-WAZA", "ō-uchi-gaeshi": "ASHI-WAZA", "hane-goshi-gaeshi": "ASHI-WAZA", "harai-goshi-gaeshi": "ASHI-WAZA", "uchi-mata-gaeshi": "ASHI-WAZA",
-  "tomoe-nage": "SUTEMI-WAZA", "sumi-gaeshi": "SUTEMI-WAZA", "hikikomi-gaeshi": "SUTEMI-WAZA", "tawara-gaeshi": "SUTEMI-WAZA", "ura-nage": "SUTEMI-WAZA", "yoko-otoshi": "SUTEMI-WAZA", "tani-otoshi": "SUTEMI-WAZA", "hane-makikomi": "SUTEMI-WAZA", "soto-makikomi": "SUTEMI-WAZA", "uchi-makikomi": "SUTEMI-WAZA", "uki-waza": "SUTEMI-WAZA", "yoko-wakare": "SUTEMI-WAZA", "yoko-guruma": "SUTEMI-WAZA", "yoko-gake": "SUTEMI-WAZA", "daki-wakare": "SUTEMI-WAZA", "ō-soto-makikomi": "SUTEMI-WAZA", "uchi-mata-makikomi": "SUTEMI-WAZA", "harai-makikomi": "SUTEMI-WAZA", "ko-uchi-makikomi": "SUTEMI-WAZA", "kani-basami": "SUTEMI-WAZA", "kawazu-gake": "SUTEMI-WAZA",
-  "kesa-gatame": "OSAEKOMI-WAZA", "kuzure-kesa-gatame": "OSAEKOMI-WAZA", "ushiro-kesa-gatame": "OSAEKOMI-WAZA", "kata-gatame": "OSAEKOMI-WAZA", "kami-shihō-gatame": "OSAEKOMI-WAZA", "kuzure-kami-shihō-gatame": "OSAEKOMI-WAZA", "yoko-shihō-gatame": "OSAEKOMI-WAZA", "tate-shihō-gatame": "OSAEKOMI-WAZA", "uki-gatame": "OSAEKOMI-WAZA", "ura-gatame": "OSAEKOMI-WAZA",
-  "nami-jūji-jime": "SHIME-WAZA", "gyaku-jūji-jime": "SHIME-WAZA", "kata-jūji-jime": "SHIME-WAZA", "hadaka-jime": "SHIME-WAZA", "okuri-eri-jime": "SHIME-WAZA", "kataha-jime": "SHIME-WAZA", "katate-jime": "SHIME-WAZA", "ryōte-jime": "SHIME-WAZA", "sode-guruma-jime": "SHIME-WAZA", "tsukkomi-jime": "SHIME-WAZA", "sankaku-jime": "SHIME-WAZA", "dō-jime": "SHIME-WAZA",
-  "ude-garami": "KANSETSU-WAZA", "ude-hishigi-jūji-gatame": "KANSETSU-WAZA", "ude-hishigi-ude-gatame": "KANSETSU-WAZA", "ude-hishigi-hiza-gatame": "KANSETSU-WAZA", "ude-hishigi-waki-gatame": "KANSETSU-WAZA", "ude-hishigi-hara-gatame": "KANSETSU-WAZA", "ude-hishigi-ashi-gatame": "KANSETSU-WAZA", "ude-hishigi-te-gatame": "KANSETSU-WAZA", "ude-hishigi-sankaku-gatame": "KANSETSU-WAZA", "ashi-garami": "KANSETSU-WAZA"
+  "tomoe-nage": "SUTEMI-WAZA", "sumi-gaeshi": "SUTEMI-WAZA", "hikikomi-gaeshi": "SUTEMI-WAZA", "tawara-gaeshi": "SUTEMI-WAZA", "ura-nage": "SUTEMI-WAZA", "yoko-otoshi": "SUTEMI-WAZA", "tani-otoshi": "SUTEMI-WAZA", "hane-makikomi": "SUTEMI-WAZA", "soto-makikomi": "SUTEMI-WAZA", "uchi-makikomi": "SUTEMI-WAZA", "uki-waza": "SUTEMI-WAZA", "yoko-wakare": "SUTEMI-WAZA", "yoko-guruma": "SUTEMI-WAZA", "yoko-gake": "SUTEMI-WAZA", "daki-wakare": "SUTEMI-WAZA", "ō-soto-makikomi": "SUTEMI-WAZA", "uchi-mata-makikomi": "SUTEMI-WAZA", "harai-makikomi": "SUTEMI-WAZA", "ko-uchi-makikomi": "SUTEMI-WAZA", "kani-basami": "SUTEMI-WAZA", "kawazu-gake": "SUTEMI-WAZA"
 };
 
-const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", "KANSETSU-WAZA": "#ec4899" };
+const CORES_GRUPOS: any = { 
+  "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", "SUTEMI-WAZA": "#ef4444"
+};
 
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 type LoopRange = { start: number; end: number } | null;
@@ -96,12 +105,13 @@ export default function JudoPlayer() {
   const [kumiDir, setKumiDir] = useState('Gola');
   const [kumiEsq, setKumiEsq] = useState('Manga');
 
-  // --- NE-WAZA STATE (NOVO v22) ---
+  // --- NE-WAZA STATE ---
   const [modalNeWaza, setModalNeWaza] = useState(false);
   const [nwAtleta, setNwAtleta] = useState('BRANCO');
-  const [nwEntrada, setNwEntrada] = useState('DIRETA'); // Direta vs Pausa
-  const [nwPosicao, setNwPosicao] = useState('TOP'); // Top vs Bottom
+  const [nwEntrada, setNwEntrada] = useState('DIRETA'); 
+  const [nwPosicao, setNwPosicao] = useState('TOP'); 
   const [nwAcao, setNwAcao] = useState(DB_NW_ACOES_TOP[0]);
+  const [nwTecnica, setNwTecnica] = useState(''); // NOVO: Técnica específica
   const [nwDesfecho, setNwDesfecho] = useState('Matte (Sem Ponto)');
 
   // --- DADOS REGISTRO ---
@@ -119,11 +129,10 @@ export default function JudoPlayer() {
 
   // --- DATABASE ---
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v22') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v23') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v22', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v23', JSON.stringify(eventos)); }, [eventos]);
   
-  // Persistência de Metadados
   useEffect(() => {
       const savedMeta = localStorage.getItem('smaartpro_meta_v21');
       if (savedMeta) setMetadataMap(JSON.parse(savedMeta));
@@ -210,7 +219,7 @@ export default function JudoPlayer() {
     return `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
   };
 
-  // -- METADATA MANAGEMENT --
+  // -- METADATA --
   const openMetadataModal = () => {
     setMetaEvent(currentMetadata.eventName);
     setMetaDate(currentMetadata.date);
@@ -218,13 +227,11 @@ export default function JudoPlayer() {
     setMetaPhase(currentMetadata.phase);
     setModalMetadata(true);
   };
-
   const saveMetadata = () => {
     const newMeta = { eventName: metaEvent, date: metaDate, category: metaCat, phase: metaPhase, location: '' };
     setMetadataMap(prev => ({ ...prev, [currentVideo.id]: newMeta }));
     setModalMetadata(false);
   };
-
   const applyMetadataToAll = () => {
     if (confirm("Aplicar estes dados para TODOS os vídeos da playlist?")) {
         const newMap = { ...metadataMap };
@@ -242,7 +249,7 @@ export default function JudoPlayer() {
   const abrirKumiKata = () => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); setTempoCapturado(currentTime); setKumiAtleta('BRANCO'); setModalKumi(true); };
   const salvarKumiKata = () => { const detalhe = `${kumiBase} (D:${kumiDir} / E:${kumiEsq})`; const dados = { id: Date.now(), videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'KUMI-KATA', tipo: 'PEGADA', especifico: detalhe, atleta: kumiAtleta, lado: '-', corTecnica: kumiAtleta === 'AZUL' ? THEME.primary : '#ffffff' }; setEventos((prev:any) => [dados, ...prev]); setModalKumi(false); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.playVideo(); else filePlayerRef.current?.play(); };
 
-  // -- NE-WAZA ACTIONS (NOVO v22) --
+  // -- NE-WAZA ACTIONS --
   const abrirNeWaza = () => {
      if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
      setTempoCapturado(currentTime);
@@ -250,12 +257,16 @@ export default function JudoPlayer() {
      setNwEntrada('DIRETA');
      setNwPosicao('TOP');
      setNwAcao(DB_NW_ACOES_TOP[0]);
+     setNwTecnica('');
      setNwDesfecho('Matte (Sem Ponto)');
      setModalNeWaza(true);
   };
 
   const salvarNeWaza = () => {
-     const detalhe = `${nwEntrada} | ${nwPosicao} > ${nwAcao}`;
+     // Constrói o detalhe com a técnica específica se houver
+     const detalheTecnica = nwTecnica ? ` (${nwTecnica})` : '';
+     const detalhe = `${nwEntrada} | ${nwPosicao} > ${nwAcao}${detalheTecnica}`;
+     
      const dados = { 
         id: Date.now(), 
         videoId: currentVideo.name, 
@@ -333,9 +344,9 @@ export default function JudoPlayer() {
           const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0; 
           sorted.forEach((e:any) => { csv+=`${e.videoId};${meta.eventName};${meta.date};${meta.phase};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.direcao||'-'};${e.grupo||e.tipo}\n`; }); 
       }); 
-      const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v22_${new Date().toISOString().slice(0,10)}.csv`; link.click(); 
+      const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v23_${new Date().toISOString().slice(0,10)}.csv`; link.click(); 
   };
-  const exportarBackup = () => { const dadosBackup = { version: '22.0', timestamp: new Date().toISOString(), playlist, eventos, metadata: metadataMap }; const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+  const exportarBackup = () => { const dadosBackup = { version: '23.0', timestamp: new Date().toISOString(), playlist, eventos, metadata: metadataMap }; const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
   const importarBackup = (e: any) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const json = JSON.parse(event.target?.result as string); if (json.eventos && Array.isArray(json.eventos)) { if (confirm("ATENÇÃO: Isso substituirá todos os dados atuais. Deseja continuar?")) { setEventos(json.eventos); if (json.playlist) { setPlaylist(json.playlist); setCurrentVideoIndex(0); } if(json.metadata) setMetadataMap(json.metadata); alert("Backup restaurado! 🥋"); } } else alert("Arquivo inválido."); } catch (err) { alert("Erro ao ler JSON."); } }; reader.readAsText(file); e.target.value = null; };
   const imprimirRelatorio = () => { setReportMode(true); setTimeout(() => { window.print(); }, 500); };
   const gerarPromptIA = () => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); const evs = eventos.filter((e:any) => e.videoId === currentVideo.name); const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', '); const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', '); const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', '); const desenhos = evs.filter((e:any) => e.categoria === 'ANALISE').map((e:any) => formatTimeVideo(e.tempo)).join(', '); const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}. ATENÇÃO: O técnico marcou observações visuais (desenhos) nos seguintes momentos: ${desenhos || 'Nenhum'}. Verifique o que ocorreu nesses tempos. Identifique o Tokui-waza e sugira correções táticas.`; setGeneratedPrompt(prompt); setCopied(false); setModalIA(true); };
@@ -384,7 +395,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v22.0 Ne-Waza</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v23.0 Ground</span>
         </h1>
         <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -451,7 +462,7 @@ export default function JudoPlayer() {
         </div>
       )}
 
-      {/* --- MODAL NE-WAZA (NOVO v22) --- */}
+      {/* --- MODAL NE-WAZA (NOVO v23) --- */}
       {modalNeWaza && (
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
@@ -486,6 +497,14 @@ export default function JudoPlayer() {
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>AÇÃO ESPECÍFICA</div>
                <select value={nwAcao} onChange={(e) => setNwAcao(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.newaza}`}}>
                   {(nwPosicao === 'TOP' ? DB_NW_ACOES_TOP : DB_NW_ACOES_BOTTOM).map(a => <option key={a} value={a}>{a}</option>)}
+               </select>
+            </div>
+
+            <div style={{marginBottom:'15px'}}>
+               <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TÉCNICA NOMEADA (OPCIONAL)</div>
+               <select value={nwTecnica} onChange={(e) => setNwTecnica(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
+                  <option value="">-- Nenhuma --</option>
+                  {Object.keys(DB_NE_WAZA_LIST).map(t => <option key={t} value={t}>{t} ({DB_NE_WAZA_LIST[t]})</option>)}
                </select>
             </div>
 
@@ -544,13 +563,13 @@ export default function JudoPlayer() {
         </div>
       )}
 
-      {/* --- MODAL REGISTRO (WAZA) COM D-PAD --- */}
+      {/* --- MODAL REGISTRO (NAGE-WAZA) --- */}
       {modalAberto && (
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
               <h2 style={{margin:0, color: punicaoMode ? THEME.danger : THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
-                {punicaoMode ? (punicaoMode==='SHIDO' ? <><AlertTriangle size={24}/> REGISTRAR SHIDO</> : <><AlertOctagon size={24}/> REGISTRAR HANSOKU</>) : <><MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR TÉCNICA'}</>}
+                {punicaoMode ? (punicaoMode==='SHIDO' ? <><AlertTriangle size={24}/> REGISTRAR SHIDO</> : <><AlertOctagon size={24}/> REGISTRAR HANSOKU</>) : <><Tornado size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'NAGE-WAZA'}</>}
               </h2>
               <button onClick={() => setModalAberto(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
             </div>
@@ -573,12 +592,11 @@ export default function JudoPlayer() {
 
                 <div style={{display:'flex', gap:'20px'}}>
                    <div style={{flex:2}}>
-                      <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TÉCNICA</div>
+                      <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TÉCNICA DE ARREMESSO</div>
                       <div style={{position:'relative'}}><Search size={18} style={{position:'absolute', top:'13px', left:'14px', color: THEME.textDim}}/><input ref={inputRef} type="text" placeholder="Digite o nome..." value={modalNome} onChange={e=>setModalNome(e.target.value)} style={{width:'100%', padding:'12px 12px 12px 42px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px', fontSize:'15px', outline:'none', boxSizing:'border-box'}}/></div>
                       {sugestoes.length > 0 && (<div style={{position:'absolute', width:'100%', background: THEME.card, zIndex:100, border:`1px solid ${THEME.cardBorder}`, borderRadius:'8px', marginTop:'4px', boxShadow:'0 10px 15px -3px rgba(0, 0, 0, 0.3)', overflow:'hidden'}}>{sugestoes.map(s=>(<div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'12px', borderBottom:`1px solid ${THEME.cardBorder}`, cursor:'pointer', display:'flex', justifyContent:'space-between', fontSize:'14px'}}><span>{s}</span><span style={{fontSize:'10px', background:THEME.surface, padding:'2px 6px', borderRadius:'4px', color:THEME.textDim}}>{DB_GOLPES[Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase())||'']}</span></div>))}</div>)}
                    </div>
 
-                   {/* NOVO D-PAD DE DIREÇÃO */}
                    <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center'}}>
                       <div style={{fontSize:'10px', color: THEME.textDim, marginBottom:'6px', fontWeight:'600'}}>DIREÇÃO</div>
                       <div style={{display:'grid', gridTemplateColumns:'24px 24px 24px', gridTemplateRows:'24px 24px 24px', gap:'2px'}}>
@@ -660,7 +678,7 @@ export default function JudoPlayer() {
                 <div style={{display:'flex', alignItems:'center', background: THEME.surface, padding:'4px', borderRadius:'20px', border:`1px solid ${THEME.cardBorder}`, gap:'4px'}}>
                   <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="-0.05s"><ChevronLeft size={18}/></button>
                   
-                  {/* BOTÃO PLAY REVISADO */}
+                  {/* BOTÃO PLAY */}
                   <button onClick={toggleVideo} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', // GARANTE CENTRALIZAÇÃO
                     background: THEME.primary, borderRadius: '50%', border: 'none', cursor: 'pointer',
@@ -670,7 +688,7 @@ export default function JudoPlayer() {
                   }}>
                       {isPlaying ? 
                         <Pause size={24} color="white" fill="white" strokeWidth={2} /> : 
-                        <Play size={24} color="white" fill="white" strokeWidth={2} style={{marginLeft:'4px'}} /> // Pequeno ajuste ótico
+                        <Play size={24} color="white" fill="white" strokeWidth={2} style={{marginLeft:'4px'}} /> 
                       }
                   </button>
 
@@ -690,6 +708,8 @@ export default function JudoPlayer() {
 
              {/* DIREITA: TOOLS */}
              <div style={{display:'flex', gap:'8px'}}>
+                <button onClick={abrirKumiKata} style={{...btnStyle, background: 'transparent', color: '#f59e0b', padding:'6px'}} title="Registrar Pegada"><Hand size={18}/></button>
+                <div style={{width:'1px', background: THEME.cardBorder, height:'20px', alignSelf:'center'}}></div>
                 <button onClick={() => toggleDrawingMode()} style={{...btnStyle, background: isDrawingMode ? THEME.primary : 'transparent', color: isDrawingMode ? 'white' : THEME.textDim}}><PenTool size={16}/></button>
                 <div style={{width:'1px', background: THEME.cardBorder, height:'20px', alignSelf:'center'}}></div>
                 <button onClick={() => mudarVelocidade(0.25)} style={{...btnStyle, background: playbackRate===0.25 ? THEME.warning : 'transparent', color: playbackRate===0.25 ? 'black' : THEME.textDim, fontSize:'11px', fontWeight:'700'}}>0.25x</button>
@@ -699,7 +719,7 @@ export default function JudoPlayer() {
 
           <div style={{display: 'flex', gap: '12px', marginBottom: '24px'}}>
              <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, flex: 2, padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`}}>
-               <CheckCircle size={28}/> WAZA
+               <Tornado size={24}/> NAGE-WAZA
              </button>
              <button onClick={abrirNeWaza} style={{...btnStyle, flex: 1, padding:'24px', background: THEME.card, border: `1px solid ${THEME.newaza}`, color: THEME.newaza, fontSize:'16px'}}>
                <Layers size={24}/> NE-WAZA
