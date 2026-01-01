@@ -6,7 +6,7 @@ import {
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
   PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
-  FileJson, UploadCloud, Printer, SkipBack, SkipForward // Novos ícones de playlist
+  FileJson, UploadCloud, Printer, SkipBack, SkipForward
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -57,8 +57,6 @@ export default function JudoPlayer() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
   const [isDataFullscreen, setIsDataFullscreen] = useState(false); 
-
-  // --- PRECISION ---
   const [loopRange, setLoopRange] = useState<LoopRange>(null);
 
   // --- DRAWING STATE ---
@@ -92,9 +90,9 @@ export default function JudoPlayer() {
 
   // --- DATABASE ---
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v18_1') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v18_2') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v18_1', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v18_2', JSON.stringify(eventos)); }, [eventos]);
 
   // ==================================================================================
   // 1. CÁLCULOS (MEMO)
@@ -195,11 +193,10 @@ export default function JudoPlayer() {
     else registrarFluxo('HAJIME');
   };
 
-  // --- PRECISION CONTROLS (V18) ---
+  // --- PRECISION CONTROLS ---
   const stepFrame = (frames: number) => {
-    const frameTime = 0.05; // ~20-30fps
+    const frameTime = 0.05; 
     const newTime = currentTime + (frames * frameTime);
-    
     if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) {
         youtubePlayerRef.current.seekTo(newTime, true);
     } else if (filePlayerRef.current) {
@@ -225,18 +222,10 @@ export default function JudoPlayer() {
   };
 
   const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
-  
   const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
-  
   const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
+  const removerDaPlaylist = (index: number, e: any) => { e.stopPropagation(); const nova = playlist.filter((_,i)=>i!==index); if(nova.length) setPlaylist(nova); if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); };
   
-  const removerDaPlaylist = (index: number, e: any) => { 
-    e.stopPropagation(); 
-    const nova = playlist.filter((_,i)=>i!==index); 
-    if(nova.length) setPlaylist(nova); 
-    if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); 
-  };
-
   const mudarVelocidade = (rate?: number) => { 
     const r = [0.25, 0.5, 1.0, 1.5, 2.0]; 
     const n = rate || r[(r.indexOf(playbackRate)+1)%r.length]; 
@@ -302,7 +291,7 @@ export default function JudoPlayer() {
     setModalAberto(true);
   };
 
-  // --- FUNÇÕES DE DESENHO ---
+  // --- FUNÇÕES DE DESENHO (CORRIGIDAS COM PREVENT DEFAULT) ---
   const clearCanvas = () => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
@@ -360,6 +349,9 @@ export default function JudoPlayer() {
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault(); // BUG FIX: PREVINE ARRASTAR A TELA
+    e.stopPropagation();
+    
     if (!isDrawingMode || !canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
@@ -379,8 +371,11 @@ export default function JudoPlayer() {
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault(); 
+    e.stopPropagation();
+
     if (!isDrawing || !canvasRef.current) return;
-    const canvas = canvasRef.current.getContext('2d');
+    const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
@@ -396,6 +391,7 @@ export default function JudoPlayer() {
   };
 
   const stopDrawing = (e: any) => {
+    e.preventDefault(); 
     if (!isDrawing || !canvasRef.current) return;
     setIsDrawing(false);
     const rect = canvasRef.current.getBoundingClientRect();
@@ -447,14 +443,14 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v18_1_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v18_2_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
 
   const exportarBackup = () => {
-    const dadosBackup = { version: '18.1', timestamp: new Date().toISOString(), playlist, eventos };
+    const dadosBackup = { version: '18.2', timestamp: new Date().toISOString(), playlist, eventos };
     const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a"); link.href = url; link.download = `smaartpro_backup.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
   
   const importarBackup = (e: any) => {
@@ -533,7 +529,6 @@ export default function JudoPlayer() {
         else if (currentVideo.type === 'FILE' && filePlayerRef.current) setCurrentTime(filePlayerRef.current.currentTime);
         af = requestAnimationFrame(loop);
       }
-      // LOOP CHECK
       if (loopRange && isPlaying) {
           if (currentTime >= loopRange.end) {
               if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(loopRange.start, true);
@@ -555,7 +550,7 @@ export default function JudoPlayer() {
   const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' };
 
   // ==================================================================================
-  // 4. RENDERIZAÇÃO (JSX)
+  // 4. RENDERIZAÇÃO
   // ==================================================================================
   return (
     <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
@@ -576,7 +571,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v18.1</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v18.2</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -600,7 +595,7 @@ export default function JudoPlayer() {
         </div>
       </div>
 
-      {/* --- MODO RELATÓRIO (OVERLAY) --- */}
+      {/* --- MODO RELATÓRIO --- */}
       {reportMode && (
         <div className="printable-report" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'white', zIndex: 99999, padding: '40px', overflowY: 'auto', color:'black' }}>
           <div className="no-print" style={{position:'fixed', top:'20px', right:'20px', display:'flex', gap:'10px'}}>
@@ -734,7 +729,7 @@ export default function JudoPlayer() {
                 <div style={{display:'flex', alignItems:'center', background: THEME.surface, padding:'4px', borderRadius:'20px', border:`1px solid ${THEME.cardBorder}`, gap:'4px'}}>
                   <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="-0.05s"><ChevronLeft size={18}/></button>
                   <button onClick={toggleVideo} style={{...btnStyle, background: THEME.primary, color:'white', width:'36px', height:'36px', borderRadius:'50%', boxShadow: `0 0 10px ${THEME.primary}66`}}>
-                      {isPlaying ? <Pause size={18} fill="white"/> : <Play size={18} fill="white" style={{marginLeft:'2px'}}/>}
+                      {isPlaying ? <Pause size={18} fill="white" color="white" /> : <Play size={18} fill="white" color="white" style={{marginLeft:'2px'}}/>}
                   </button>
                   <button onClick={() => stepFrame(1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="+0.05s"><ChevronRight size={18}/></button>
                 </div>
