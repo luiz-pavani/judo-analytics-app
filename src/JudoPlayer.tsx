@@ -5,7 +5,7 @@ import {
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
-  PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, ScanEye
+  PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save // ScanEye removido
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -33,7 +33,7 @@ type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 
 export default function JudoPlayer() {
   const mainContainerRef = useRef<HTMLDivElement>(null);
-  const playerContainerRef = useRef<HTMLDivElement>(null); // Ref especifica para o player
+  const playerContainerRef = useRef<HTMLDivElement>(null); 
   const youtubePlayerRef = useRef<any>(null);
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
@@ -50,7 +50,7 @@ export default function JudoPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
-  const [isDataFullscreen, setIsDataFullscreen] = useState(false); // Estado de Fullscreen
+  const [isDataFullscreen, setIsDataFullscreen] = useState(false); 
 
   // STATE: DRAWING (TELESTRATOR)
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -66,7 +66,6 @@ export default function JudoPlayer() {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // DADOS REGISTRO
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
@@ -85,7 +84,7 @@ export default function JudoPlayer() {
   });
   useEffect(() => { localStorage.setItem('smaartpro_db_v15', JSON.stringify(eventos)); }, [eventos]);
 
-  // --- CÁLCULOS CRÍTICOS (HOISTED) ---
+  // --- 1. CRITICAL CALCULATIONS (HOISTED) ---
   const currentVideo = useMemo(() => playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' }, [playlist, currentVideoIndex]);
 
   const isFightActive = useMemo(() => {
@@ -94,7 +93,42 @@ export default function JudoPlayer() {
     return evs[0].tipo === 'HAJIME';
   }, [eventos, currentVideo.name]);
 
-  // --- ACTIONS ---
+  // --- 2. BASIC FUNCTIONS (DEFINED BEFORE EFFECTS) ---
+  const handleFileSelect = (e: any) => {
+    const files = Array.from(e.target.files || []);
+    const newItems: PlaylistItem[] = files.map((file: any) => ({ id: URL.createObjectURL(file), type: 'FILE', name: file.name }));
+    if (playlist.length === 1 && playlist[0].id === 'kU_gjfnyu6A') { setPlaylist(newItems); setCurrentVideoIndex(0); } else { setPlaylist([...playlist, ...newItems]); }
+    setShowPlaylist(true);
+  };
+
+  const adicionarYoutube = () => {
+    const link = prompt("Cole o Link do YouTube:");
+    if (link) {
+      const id = link.includes('v=') ? link.split('v=')[1].split('&')[0] : link.split('/').pop() || link;
+      setPlaylist([...playlist, { id, type: 'YOUTUBE', name: `YouTube: ${id}` }]);
+      setShowPlaylist(true);
+    }
+  };
+
+  const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
+  
+  const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
+  
+  const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
+  
+  const removerDaPlaylist = (index: number, e: any) => { 
+    e.stopPropagation(); 
+    const nova = playlist.filter((_,i)=>i!==index); 
+    if(nova.length) setPlaylist(nova); 
+    if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); 
+  };
+
+  const toggleVideo = () => { 
+    if (currentVideo.type === 'YOUTUBE') isPlaying ? youtubePlayerRef.current?.pauseVideo() : youtubePlayerRef.current?.playVideo(); 
+    else isPlaying ? filePlayerRef.current?.pause() : filePlayerRef.current?.play(); 
+  };
+
+  // --- 3. ADVANCED ACTIONS ---
   const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
   
   const toggleFightState = () => {
@@ -102,9 +136,16 @@ export default function JudoPlayer() {
     else registrarFluxo('HAJIME');
   };
 
-  const toggleVideo = () => { 
-    if (currentVideo.type === 'YOUTUBE') isPlaying ? youtubePlayerRef.current?.pauseVideo() : youtubePlayerRef.current?.playVideo(); 
-    else isPlaying ? filePlayerRef.current?.pause() : filePlayerRef.current?.play(); 
+  const salvarEFechar = (dados: any) => {
+    if (editingEventId) setEventos(eventos.map((ev: any) => ev.id === editingEventId ? { ...ev, ...dados } : ev));
+    else setEventos([{ id: Date.now(), ...dados }, ...eventos]);
+    setModalAberto(false);
+    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
+  };
+
+  const confirmarEContinuar = (resultado: string) => {
+    const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'TECNICA', grupo: modalGrupo, especifico: modalNome || "Técnica Geral", atleta: modalAtleta, lado: modalLado, corTecnica: CORES_GRUPOS[modalGrupo], resultado: resultado };
+    salvarEFechar(dados);
   };
 
   const iniciarRegistroRapido = (resultadoInicial?: string) => {
@@ -123,19 +164,7 @@ export default function JudoPlayer() {
     setEditingEventId(null); setTempoCapturado(t); setPunicaoMode(tipo); setModalAberto(true);
   };
 
-  const confirmarEContinuar = (resultado: string) => {
-    const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'TECNICA', grupo: modalGrupo, especifico: modalNome || "Técnica Geral", atleta: modalAtleta, lado: modalLado, corTecnica: CORES_GRUPOS[modalGrupo], resultado: resultado };
-    salvarEFechar(dados);
-  };
-
-  const salvarEFechar = (dados: any) => {
-    if (editingEventId) setEventos(eventos.map((ev: any) => ev.id === editingEventId ? { ...ev, ...dados } : ev));
-    else setEventos([{ id: Date.now(), ...dados }, ...eventos]);
-    setModalAberto(false);
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
-  };
-
-  // --- DRAWING LOGIC (CATALOGAÇÃO) ---
+  // --- 4. DRAWING FUNCTIONS ---
   const clearCanvas = () => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
@@ -143,47 +172,19 @@ export default function JudoPlayer() {
     }
   };
 
-  const salvarDesenhoNoLog = () => {
-    // Registra que houve uma análise visual neste momento
-    setEventos((prev: any[]) => [{ 
-      id: Date.now(), 
-      videoId: currentVideo.name, 
-      tempo: currentTime, 
-      categoria: 'ANALISE', 
-      tipo: 'DESENHO', 
-      especifico: 'Anotação Tática Visual', 
-      atleta: '-', 
-      lado: '-', 
-      corTecnica: '#a855f7' // Roxo para análise
-    }, ...prev]);
-    
-    // Opcional: Feedback visual de salvo
-    alert("Anotação Visual Catalogada!");
-    toggleDrawingMode(); // Sai do modo desenho
-  };
-
   const toggleDrawingMode = () => {
     const newState = !isDrawingMode;
     setIsDrawingMode(newState);
-    
     if (newState) {
-      // Pausa
       if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); 
       else filePlayerRef.current?.pause();
-      
-      // Tenta entrar em Fullscreen no container do player para fugir das propagandas
       if (playerContainerRef.current) {
         if (playerContainerRef.current.requestFullscreen) {
-          playerContainerRef.current.requestFullscreen().catch(err => {
-             console.log("Fullscreen negado (interação requerida)");
-             // Fallback: Modo CSS Maximize
-             setIsDataFullscreen(true);
-          });
+          playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true));
         } else {
            setIsDataFullscreen(true);
         }
       }
-
       setTimeout(() => {
         if(canvasRef.current && canvasRef.current.parentElement) {
           canvasRef.current.width = canvasRef.current.parentElement.clientWidth;
@@ -191,14 +192,61 @@ export default function JudoPlayer() {
         }
       }, 100);
     } else {
-      // Sai do Fullscreen ao fechar desenho
       if (document.fullscreenElement) document.exitFullscreen();
       setIsDataFullscreen(false);
       clearCanvas();
     }
   };
 
-  // --- KEYBOARD LISTENER ---
+  const salvarDesenhoNoLog = () => {
+    setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'ANALISE', tipo: 'DESENHO', especifico: 'Anotação Tática Visual', atleta: '-', lado: '-', corTecnica: '#a855f7' }, ...prev]);
+    alert("Anotação Visual Catalogada!");
+    toggleDrawingMode();
+  };
+
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawingMode || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
+    const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    setIsDrawing(true);
+    setStartPos({x, y});
+    setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing || !canvasRef.current || !startPos) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
+    const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); } 
+    else if (drawTool === 'ARROW') {
+      if (snapshot) ctx.putImageData(snapshot, 0, 0);
+      const headLength = 15; const angle = Math.atan2(y - startPos.y, x - startPos.x);
+      ctx.beginPath(); ctx.moveTo(startPos.x, startPos.y); ctx.lineTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = 4; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - headLength * Math.cos(angle - Math.PI / 6), y - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(x, y); ctx.lineTo(x - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke();
+    }
+  };
+
+  const stopDrawing = () => { if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if(ctx) ctx.closePath(); setIsDrawing(false); setSnapshot(null); };
+
+  // --- 5. EFFECTS (DEFINED AFTER FUNCTIONS) ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (modalIA) return;
@@ -226,39 +274,25 @@ export default function JudoPlayer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive]);
 
-  // --- REST OF COMPONENT LOGIC ---
-  const handleResize = () => {
-    setIsMobile(window.innerWidth < 800);
-    if(canvasRef.current && canvasRef.current.parentElement) {
-        canvasRef.current.width = canvasRef.current.parentElement.clientWidth;
-        canvasRef.current.height = canvasRef.current.parentElement.clientHeight;
-    }
-  };
-
   useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 800);
+      if(canvasRef.current && canvasRef.current.parentElement) {
+          canvasRef.current.width = canvasRef.current.parentElement.clientWidth;
+          canvasRef.current.height = canvasRef.current.parentElement.clientHeight;
+      }
+    };
     window.addEventListener('resize', handleResize);
-    // Listener para sair do modo desenho se o usuário apertar ESC no fullscreen
     const handleFsChange = () => {
-        if (!document.fullscreenElement && isDrawingMode) {
-            // Se saiu do fullscreen manualmente, podemos manter o desenho ou sair?
-            // Melhor manter, mas atualizar canvas
-            setTimeout(handleResize, 100);
-        }
+        if (!document.fullscreenElement && isDrawingMode) { setTimeout(handleResize, 100); }
     };
     document.addEventListener('fullscreenchange', handleFsChange);
-    return () => {
-        window.removeEventListener('resize', handleResize);
-        document.removeEventListener('fullscreenchange', handleFsChange);
-    }
+    return () => { window.removeEventListener('resize', handleResize); document.removeEventListener('fullscreenchange', handleFsChange); }
   }, [isDrawingMode]);
 
-  // ... (Video Handlers remain same)
+  // ... (Other handlers like onStateChange)
   const onReady = (e: any) => { youtubePlayerRef.current = e.target; setDuration(e.target.getDuration()); };
-  const onStateChange = (e: any) => { 
-    setIsPlaying(e.data === 1); 
-    if (e.data === 0) proximoVideo();
-    window.focus(); 
-  };
+  const onStateChange = (e: any) => { setIsPlaying(e.data === 1); if (e.data === 0) proximoVideo(); window.focus(); };
   const onFileEnded = () => proximoVideo();
 
   useEffect(() => {
@@ -276,48 +310,6 @@ export default function JudoPlayer() {
 
   const irPara = (t: number) => { const st = Math.max(0, t - 2); if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } setCurrentTime(st); };
   const mudarVelocidade = () => { const r = [0.25, 0.5, 1.0, 1.5, 2.0]; const n = r[(r.indexOf(playbackRate)+1)%r.length]; setPlaybackRate(n); if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); else filePlayerRef.current.playbackRate = n; };
-
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawingMode || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    setIsDrawing(true);
-    setStartPos({x, y});
-    setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height));
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.strokeStyle = drawColor;
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing || !canvasRef.current || !startPos) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); } 
-    else if (drawTool === 'ARROW') {
-      if (snapshot) ctx.putImageData(snapshot, 0, 0);
-      const headLength = 15; const angle = Math.atan2(y - startPos.y, x - startPos.x);
-      ctx.beginPath(); ctx.moveTo(startPos.x, startPos.y); ctx.lineTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = 4; ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - headLength * Math.cos(angle - Math.PI / 6), y - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(x, y); ctx.lineTo(x - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke();
-    }
-  };
-
-  const stopDrawing = () => { if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if(ctx) ctx.closePath(); setIsDrawing(false); setSnapshot(null); };
 
   const editarEvento = (ev: any) => {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause();
@@ -437,7 +429,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v15.0 AI Catalog</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v15.1 Fixed</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
