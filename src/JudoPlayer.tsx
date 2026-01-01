@@ -8,15 +8,59 @@ import {
   PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
   FileJson, UploadCloud, Printer, SkipBack, SkipForward, Hand,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Compass, Trophy, Layers, Tornado,
-  MapPin, Grid, Activity, Triangle, PlayCircle, Users, UserPlus 
+  MapPin, Grid, Activity, Triangle, PlayCircle, Users, UserPlus, MonitorPlay
 } from 'lucide-react';
 
-// --- THEME SYSTEM ---
+// --- DESIGN SYSTEM (v27.1) ---
 const THEME = {
-  bg: '#0f172a', card: '#1e293b', cardBorder: '#334155', text: '#f8fafc', textDim: '#94a3b8',
-  primary: '#3b82f6', primaryHover: '#2563eb', danger: '#ef4444', success: '#10b981', warning: '#eab308', surface: '#020617', neutral: '#64748b',
-  newaza: '#14b8a6', tatamiCenter: '#facc15', tatamiDanger: '#ef4444'
+  bg: '#020617', // Slate 950
+  card: '#1e293b', // Slate 800
+  cardBorder: '#334155', // Slate 700
+  text: '#f8fafc',
+  textDim: '#94a3b8',
+  primary: '#3b82f6', // Blue 500
+  primaryGradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+  danger: '#ef4444', 
+  success: '#10b981', 
+  warning: '#eab308',
+  newaza: '#06b6d4', // Cyan 500
+  kumi: '#f59e0b', // Amber 500
+  tatamiCenter: '#facc15', 
+  tatamiDanger: '#ef4444',
+  neutral: '#64748b'
 };
+
+// --- GLOBAL STYLES ---
+const GLOBAL_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@500;700&display=swap');
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: ${THEME.bg};
+    color: ${THEME.text};
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: ${THEME.cardBorder}; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: ${THEME.neutral}; }
+  
+  .glass-panel {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .glow-hover:hover {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    border-color: ${THEME.primary};
+  }
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    body { background: white !important; color: black !important; }
+    .no-print { display: none !important; }
+    .printable-report { display: block !important; position: static !important; width: 100% !important; height: auto !important; background: white !important; color: black !important; padding: 0 !important; overflow: visible !important; }
+  }
+`;
 
 // --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
@@ -42,6 +86,7 @@ const DB_GOLPES: Record<string, string> = {
 
 const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", "KANSETSU-WAZA": "#ec4899" };
 
+// --- TYPES ---
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 type LoopRange = { start: number; end: number } | null;
 type VideoMetadata = { eventName: string; date: string; category: string; phase: string; location: string; whiteId?: string; blueId?: string };
@@ -85,7 +130,7 @@ export default function JudoPlayer() {
   const [newAthleteCountry, setNewAthleteCountry] = useState('');
   const [newAthleteClub, setNewAthleteClub] = useState('');
 
-  // --- STATE: METADADOS ---
+  // --- STATE: METADATA ---
   const [metadataMap, setMetadataMap] = useState<Record<string, VideoMetadata>>({}); 
   const [modalMetadata, setModalMetadata] = useState(false);
   const [metaEvent, setMetaEvent] = useState('');
@@ -114,7 +159,7 @@ export default function JudoPlayer() {
   const [copied, setCopied] = useState(false);
   const [activeFilter, setActiveFilter] = useState('TODOS');
 
-  // --- STATE DADOS ---
+  // --- STATE: MODALS DATA ---
   const [modalKumi, setModalKumi] = useState(false);
   const [kumiAtleta, setKumiAtleta] = useState('BRANCO');
   const [kumiBase, setKumiBase] = useState('Ai-yotsu');
@@ -153,7 +198,6 @@ export default function JudoPlayer() {
       if (savedMeta) setMetadataMap(JSON.parse(savedMeta));
   }, []);
   useEffect(() => { localStorage.setItem('smaartpro_meta_v27', JSON.stringify(metadataMap)); }, [metadataMap]);
-
   useEffect(() => { localStorage.setItem('smaartpro_athletes_v27', JSON.stringify(athletes)); }, [athletes]);
 
   useEffect(() => {
@@ -216,9 +260,9 @@ export default function JudoPlayer() {
       if (ev.resultado === 'IPPON') q.ippon++; if (ev.resultado === 'WAZA-ARI') q.waza++; if (ev.resultado === 'YUKO') q.yuko++;
       if (ev.categoria === 'PUNICAO') { if (ev.tipo === 'SHIDO') q.shido++; if (ev.tipo === 'HANSOKU') q.shido += 3; }
       if (ev.categoria === 'NE-WAZA') { 
-          if (ev.resultado === 'Ippon' || ev.resultado === 'Osaekomi ippon' || ev.resultado === 'Finalização (Ippon)') q.ippon++;
-          if (ev.resultado === 'Osaekomi waza-ari') q.waza++;
-          if (ev.resultado === 'Osaekomi yuko') q.yuko++;
+          if (ev.resultado.includes('ippon') || ev.resultado.includes('Ippon')) q.ippon++;
+          if (ev.resultado.includes('waza-ari')) q.waza++;
+          if (ev.resultado.includes('yuko')) q.yuko++;
       }
     });
     return p;
@@ -231,11 +275,7 @@ export default function JudoPlayer() {
     evs.forEach((e:any) => { groups[e.grupo] = (groups[e.grupo] || 0) + 1; });
     const groupData = Object.keys(groups).map(g => ({ name: g, val: groups[g], pct: (groups[g]/total)*100, color: CORES_GRUPOS[g] })).sort((a,b)=>b.val-a.val);
     const vol = { branco: evs.filter((e:any)=>e.atleta==='BRANCO').length, azul: evs.filter((e:any)=>e.atleta==='AZUL').length };
-    const eff = {
-        branco: (evs.filter((e:any)=>e.atleta==='BRANCO' && e.resultado !== 'NADA').length / (vol.branco || 1) * 100).toFixed(0),
-        azul: (evs.filter((e:any)=>e.atleta==='AZUL' && e.resultado !== 'NADA').length / (vol.azul || 1) * 100).toFixed(0)
-    };
-    return { groupData, vol, eff };
+    return { groupData, vol };
   }, [eventos, currentVideo.name]);
 
   const radarStats = useMemo(() => {
@@ -324,7 +364,6 @@ export default function JudoPlayer() {
   
   const handleTatamiClick = (e: React.MouseEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; setModalXY({ x, y }); };
   const clearCanvas = () => { if (canvasRef.current) { const ctx = canvasRef.current.getContext('2d'); if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); } setCurrentStrokes([]); };
-  
   const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string) => { const headLength = 20; const angle = Math.atan2(toY - fromY, toX - fromX); ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); ctx.beginPath(); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke(); };
   const calculateAngle = (p1: any, p2: any, p3: any) => { const p12 = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); const p23 = Math.sqrt(Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2)); const p13 = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2)); const radians = Math.acos((p12*p12 + p23*p23 - p13*p13) / (2 * p12 * p23)); return Math.round(radians * 180 / Math.PI); };
   const redrawStrokes = (strokesToDraw: any[]) => { if (!canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); strokesToDraw.forEach(stroke => { ctx.strokeStyle = stroke.color; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; if (stroke.tool === 'PEN') { ctx.beginPath(); if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); } ctx.stroke(); } else if (stroke.tool === 'ARROW') { if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color); } } else if (stroke.tool === 'ANGLE') { if (stroke.points.length === 3) { const [p1, p2, p3] = stroke.points; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.stroke(); ctx.beginPath(); ctx.arc(p2.x, p2.y, 20, 0, 2 * Math.PI); ctx.stroke(); const angle = calculateAngle(p1, p2, p3); ctx.font = "bold 20px Arial"; ctx.fillStyle = stroke.color; ctx.fillText(`${angle}°`, p2.x + 25, p2.y); } } }); };
@@ -334,44 +373,326 @@ export default function JudoPlayer() {
   const draw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); setTempPoints(prev => [...prev, {x, y}]); } else if (drawTool === 'ARROW' && startPos) { if (snapshot) ctx.putImageData(snapshot, 0, 0); drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor); } };
   const stopDrawing = (e: any) => { e.preventDefault(); if (!isDrawing || !canvasRef.current) return; setIsDrawing(false); const rect = canvasRef.current.getBoundingClientRect(); let finalX = 0, finalY = 0; if (e.type !== 'mouseleave') { const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX; const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY; finalX = clientX - rect.left; finalY = clientY - rect.top; } if (drawTool === 'PEN') { setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, points: tempPoints }]); } else if (drawTool === 'ARROW' && startPos) { setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, points: [{x: startPos.x, y: startPos.y}, {x: finalX, y: finalY}] }]); } setSnapshot(null); setStartPos(null); setTempPoints([]); };
 
+  // Loop for playlist logic (player)
+  useEffect(() => { let af: number; const loop = () => { if (playlistMode) { const currentEvent = playlistQueue[playlistQueueIndex]; if (currentEvent) { const endTime = currentEvent.tempo + 3; if (currentTime >= endTime) { const nextIndex = playlistQueueIndex + 1; if (nextIndex < playlistQueue.length) { setPlaylistQueueIndex(nextIndex); const nextStartTime = Math.max(0, playlistQueue[nextIndex].tempo - 4); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.seekTo(nextStartTime, true); else filePlayerRef.current.currentTime = nextStartTime; } else { pararPlaylistPlayer(); } } } } if (isPlaying) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current?.getCurrentTime) setCurrentTime(youtubePlayerRef.current.getCurrentTime()); else if (currentVideo.type === 'FILE' && filePlayerRef.current) setCurrentTime(filePlayerRef.current.currentTime); af = requestAnimationFrame(loop); } if (loopRange && isPlaying) { if (currentTime >= loopRange.end) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(loopRange.start, true); else if (filePlayerRef.current) filePlayerRef.current.currentTime = loopRange.start; } } }; if (isPlaying) loop(); return () => cancelAnimationFrame(af); }, [isPlaying, currentVideo.type, loopRange, currentTime, playlistMode, playlistQueue, playlistQueueIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (modalIA || reportMode || modalKumi || modalMetadata || modalNeWaza || modalHelp || modalAthletes) return;
+      if (modalAberto) { if (e.key === 'Escape') { setModalAberto(false); } if (e.key === 'Enter' && !punicaoMode && modalAberto) confirmarEContinuar(resultadoPreSelecionado || 'NADA'); return; }
+      if (document.activeElement?.tagName === 'INPUT') return;
+      switch(e.code) {
+        case 'Space': e.preventDefault(); toggleFightState(); break; 
+        case 'KeyP': e.preventDefault(); toggleVideo(); break;
+        case 'KeyD': e.preventDefault(); toggleDrawingMode(); break; 
+        case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
+        case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
+        case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
+        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break;
+        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
+        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
+        case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive, reportMode, modalKumi, modalMetadata, modalNeWaza, modalHelp, modalAthletes]);
+
+  useEffect(() => { const handleResize = () => { setIsMobile(window.innerWidth < 800); if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (currentStrokes.length > 0) redrawStrokes(currentStrokes); } }; window.addEventListener('resize', handleResize); const handleFsChange = () => { if (!document.fullscreenElement && isDrawingMode) { setTimeout(handleResize, 100); } }; document.addEventListener('fullscreenchange', handleFsChange); return () => { window.removeEventListener('resize', handleResize); document.removeEventListener('fullscreenchange', handleFsChange); } }, [isDrawingMode, currentStrokes]);
+  const onReady = (e: any) => { youtubePlayerRef.current = e.target; setDuration(e.target.getDuration()); };
+  const onStateChange = (e: any) => { setIsPlaying(e.data === 1); if (e.data === 0) proximoVideo(); window.focus(); };
+  const onFileEnded = () => proximoVideo();
+  
+  const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
+  const SimpleDonut = ({ data }: { data: any[] }) => { let cumPct = 0; if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>; return <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: `conic-gradient(${data.map(d => { const str = `${d.color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`}}><div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div></div>; };
+  
+  // Custom Styles
+  const cardStyle: any = { background: THEME.card, border: `1px solid ${THEME.cardBorder}`, borderRadius: '12px', overflow: 'hidden', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' };
+  const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' };
+
   return (
     <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
       
-      {/* CSS IMPRESSÃO */}
-      <style>{` @media print { @page { size: A4; margin: 10mm; } body { background: white !important; color: black !important; } .no-print { display: none !important; } .printable-report { display: block !important; position: static !important; width: 100% !important; height: auto !important; background: white !important; color: black !important; padding: 0 !important; overflow: visible !important; } .printable-card { border: 1px solid #ccc !important; background: white !important; color: black !important; box-shadow: none !important; page-break-inside: avoid; margin-bottom: 20px; } } `}</style>
+      {/* GLOBAL STYLES INJECTION */}
+      <style>{GLOBAL_STYLES}</style>
 
       {/* HEADER */}
-      <div className="no-print" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
-        <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
-          <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
-          <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v26.0</span>
+      <div className="no-print" style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
+        <h1 style={{ margin: 0, fontSize: isMobile?'24px':'32px', fontWeight: '800', letterSpacing: '-1px', display: 'flex', alignItems: 'center' }}>
+          <div style={{background: THEME.primaryGradient, padding:'8px', borderRadius:'12px', marginRight:'12px', boxShadow:`0 0 20px ${THEME.primary}44`}}><Video size={24} color="white"/></div>
+          <div>
+            <span style={{ color: 'white' }}>SMAART</span><span style={{ color: THEME.primary }}>PRO</span>
+            <div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'400', letterSpacing:'2px', marginTop:'-4px'}}>ELITE JUDO ANALYTICS</div>
+          </div>
+          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v27.1</span>
         </h1>
-        <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-          <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
-            <button onClick={adicionarYoutube} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'6px 12px', fontSize:'12px'}}>+ YT</button>
-            <div style={{width:'1px', background: THEME.cardBorder, margin: '4px 0'}}></div>
-            <button onClick={() => fileInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'6px 12px', fontSize:'12px'}}>+ ARQ</button>
+        
+        <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
+          <div className="glass-panel" style={{display:'flex', borderRadius:'10px', padding:'4px'}}>
+            <button onClick={adicionarYoutube} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px 12px', fontSize:'13px'}}>+ YT</button>
+            <div style={{width:'1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0'}}></div>
+            <button onClick={() => fileInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px 12px', fontSize:'13px'}}>+ ARQ</button>
             <input type="file" ref={fileInputRef} style={{display:'none'}} multiple accept="video/*" onChange={handleFileSelect} />
           </div>
           
-          <button onClick={() => setModalAthletes(true)} style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: THEME.text, padding:'8px'}} title="Gerenciar Atletas"><Users size={18}/></button>
+          <div style={{display:'flex', gap:'8px'}}>
+             <button onClick={() => setModalAthletes(true)} className="glow-hover" style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: THEME.text, padding:'10px', borderRadius:'10px'}} title="Gerenciar Atletas"><Users size={18}/></button>
+             <button onClick={openMetadataModal} className="glow-hover" style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: '#f59e0b', padding:'10px', borderRadius:'10px'}} title="Contexto do Campeonato"><Trophy size={18}/></button>
+             <button onClick={() => setModalHelp(true)} className="glow-hover" style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: THEME.textDim, padding:'10px', borderRadius:'10px'}} title="Atalhos"><Keyboard size={18}/></button>
+          </div>
 
-          <button onClick={openMetadataModal} style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: '#f59e0b', padding:'8px'}} title="Contexto do Campeonato"><Trophy size={18}/></button>
-
-          <button onClick={() => setModalHelp(true)} style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: THEME.textDim, padding:'8px'}} title="Atalhos"><Keyboard size={18}/></button>
-
-          <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
-             <button onClick={exportarBackup} style={{...btnStyle, background: 'transparent', color: THEME.success, padding:'6px 12px', fontSize:'12px', fontWeight:'700'}}><FileJson size={16}/> SALVAR</button>
-             <div style={{width:'1px', background: THEME.cardBorder, margin: '4px 0'}}></div>
-             <button onClick={() => backupInputRef.current.click()} style={{...btnStyle, background: 'transparent', color: THEME.warning, padding:'6px 12px', fontSize:'12px', fontWeight:'700'}}><UploadCloud size={16}/> ABRIR</button>
+          <div style={{display:'flex', gap:'8px'}}>
+             <button onClick={exportarBackup} style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: THEME.success, padding:'10px', borderRadius:'10px'}} title="Salvar Backup"><Save size={18}/></button>
+             <button onClick={() => backupInputRef.current.click()} style={{...btnStyle, background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: THEME.warning, padding:'10px', borderRadius:'10px'}} title="Abrir Backup"><UploadCloud size={18}/></button>
              <input type="file" ref={backupInputRef} style={{display:'none'}} accept=".json" onChange={importarBackup} />
           </div>
 
-          <button onClick={imprimirRelatorio} style={{...btnStyle, background: 'white', color:'black', padding:'8px 12px', fontSize: '13px', border:'none', fontWeight:'700'}}><Printer size={16}/> RELATÓRIO</button>
-          <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI</button>
-          <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
-          <button onClick={baixarCSV} style={{...btnStyle, background: THEME.success, color:'white', padding:'8px 16px', fontSize: '13px'}}><Download size={16}/> CSV</button>
+          <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'10px 16px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)', borderRadius:'10px'}}><Bot size={18}/> AI Report</button>
+        </div>
+      </div>
+
+      {/* --- CONTENT GRID --- */}
+      <div className="no-print" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row' }}>
+        
+        {/* LEFT COLUMN (PLAYER + CONTROLS) */}
+        <div style={{ flex: 3, width: '100%', display:'flex', flexDirection:'column', gap:'20px' }}>
+          
+          {/* VIDEO CONTAINER */}
+          <div ref={playerContainerRef} style={{ ...cardStyle, position: isDataFullscreen ? 'fixed' : 'relative', top: isDataFullscreen ? 0 : 'auto', left: isDataFullscreen ? 0 : 'auto', width: isDataFullscreen ? '100vw' : '100%', height: isDataFullscreen ? '100vh' : 'auto', paddingTop: isDataFullscreen ? 0 : '56.25%', zIndex: isDataFullscreen ? 999 : 1, boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}>
+               {/* DRAWING LAYER */}
+               {isDrawingMode && (
+                 <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', zIndex:20, cursor: drawTool==='PEN' ? 'crosshair' : 'default'}}>
+                   <canvas ref={canvasRef} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{width:'100%', height:'100%'}} />
+                   <div className="glass-panel" style={{position:'absolute', top:'16px', left:'16px', padding:'8px', borderRadius:'12px', display:'flex', gap:'8px'}}>
+                     <button onClick={() => setDrawTool('PEN')} style={{...btnStyle, background: drawTool==='PEN'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><PenTool size={18}/></button>
+                     <button onClick={() => setDrawTool('ARROW')} style={{...btnStyle, background: drawTool==='ARROW'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><ArrowUpRight size={18}/></button>
+                     <button onClick={() => setDrawTool('ANGLE')} style={{...btnStyle, background: drawTool==='ANGLE'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><Triangle size={18}/></button>
+                     <div style={{width:'1px', background:'rgba(255,255,255,0.1)', margin:'0 4px'}}></div>
+                     <button onClick={() => setDrawColor('#eab308')} style={{width:'24px', height:'24px', borderRadius:'50%', background:'#eab308', border: drawColor==='#eab308'?'2px solid white':'2px solid transparent'}}></button>
+                     <button onClick={() => setDrawColor('#ef4444')} style={{width:'24px', height:'24px', borderRadius:'50%', background:'#ef4444', border: drawColor==='#ef4444'?'2px solid white':'2px solid transparent'}}></button>
+                     <button onClick={() => setDrawColor('#3b82f6')} style={{width:'24px', height:'24px', borderRadius:'50%', background:'#3b82f6', border: drawColor==='#3b82f6'?'2px solid white':'2px solid transparent'}}></button>
+                     <div style={{width:'1px', background:'rgba(255,255,255,0.1)', margin:'0 4px'}}></div>
+                     <button onClick={clearCanvas} style={{...btnStyle, background:'transparent', color:THEME.danger, padding:'8px'}}><Eraser size={18}/></button>
+                     <button onClick={salvarDesenhoNoLog} style={{...btnStyle, background:THEME.success, color:'white', padding:'8px'}}><Save size={18}/></button>
+                     <button onClick={() => toggleDrawingMode()} style={{...btnStyle, background: 'rgba(255,255,255,0.1)', color:'white', padding:'8px'}}><X size={18}/></button>
+                   </div>
+                 </div>
+               )}
+               {!isDrawingMode && <div onClick={toggleVideo} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>}
+               {currentVideo.type === 'YOUTUBE' ? (
+                 <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%'}}><YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, controls: 0, rel: 0, showinfo: 0, modestbranding: 1, playsinline: 1, fs: 0 } }} style={{width:'100%', height:'100%'}}/></div>
+               ) : (
+                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls={false} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>
+               )}
+          </div>
+
+          {/* PRECISION DECK */}
+          <div style={{...cardStyle, padding:'12px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderTop: `4px solid ${THEME.primary}`}}>
+             <div style={{display:'flex', alignItems:'center', gap:'16px'}}>
+                <button onClick={videoAnterior} disabled={currentVideoIndex===0} style={{...btnStyle, background:'transparent', color:currentVideoIndex===0?THEME.cardBorder:THEME.textDim}}><SkipBack size={20}/></button>
+                <div style={{display:'flex', alignItems:'center', background: THEME.bg, padding:'4px', borderRadius:'30px', border:`1px solid ${THEME.cardBorder}`, gap:'6px'}}>
+                  <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'10px'}} title="-0.05s"><ChevronLeft size={20}/></button>
+                  <button onClick={toggleVideo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.primary, borderRadius: '50%', border: 'none', cursor: 'pointer', width: '56px', height: '56px', padding: 0, boxShadow: `0 0 25px ${THEME.primary}66`, flexShrink: 0, transition:'transform 0.1s active' }}>
+                      {isPlaying ? <Pause size={28} color="white" fill="white" /> : <Play size={28} color="white" fill="white" style={{marginLeft:'4px'}} /> }
+                  </button>
+                  <button onClick={() => stepFrame(1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'10px'}} title="+0.05s"><ChevronRight size={20}/></button>
+                </div>
+                <button onClick={proximoVideo} disabled={currentVideoIndex===playlist.length-1} style={{...btnStyle, background:'transparent', color:currentVideoIndex===playlist.length-1?THEME.cardBorder:THEME.textDim}}><SkipForward size={20}/></button>
+             </div>
+
+             <div style={{display:'flex', gap:'8px', background: THEME.bg, padding:'6px 12px', borderRadius:'10px', border: `1px solid ${loopRange ? THEME.warning : THEME.cardBorder}`}}>
+                <button onClick={() => setLoopPoint('A')} style={{...btnStyle, color: loopRange?.start ? THEME.warning : THEME.textDim, fontSize:'12px', fontWeight:'800'}}>A</button>
+                <span style={{color:THEME.cardBorder}}>|</span>
+                <button onClick={() => setLoopPoint('B')} style={{...btnStyle, color: loopRange?.end ? THEME.warning : THEME.textDim, fontSize:'12px', fontWeight:'800'}}>B</button>
+                {loopRange && <button onClick={clearLoop} style={{...btnStyle, color: THEME.danger}}><X size={14}/></button>}
+             </div>
+
+             <div style={{display:'flex', gap:'12px'}}>
+                <button onClick={() => toggleDrawingMode()} className="glow-hover" style={{...btnStyle, background: isDrawingMode ? THEME.primary : THEME.bg, border:`1px solid ${isDrawingMode ? THEME.primary : THEME.cardBorder}`, color: isDrawingMode ? 'white' : THEME.textDim, padding:'10px', borderRadius:'10px'}}><PenTool size={18}/></button>
+                <div style={{width:'1px', background: THEME.cardBorder, height:'24px', alignSelf:'center'}}></div>
+                <div style={{display:'flex', background:THEME.bg, borderRadius:'8px', padding:'2px'}}>
+                   <button onClick={() => mudarVelocidade(0.25)} style={{...btnStyle, padding:'8px 12px', borderRadius:'6px', background: playbackRate===0.25 ? THEME.warning : 'transparent', color: playbackRate===0.25 ? 'black' : THEME.textDim, fontSize:'12px'}}>0.25x</button>
+                   <button onClick={() => mudarVelocidade(1.0)} style={{...btnStyle, padding:'8px 12px', borderRadius:'6px', background: playbackRate===1.0 ? THEME.success : 'transparent', color: playbackRate===1.0 ? 'white' : THEME.textDim, fontSize:'12px'}}>1.0x</button>
+                </div>
+             </div>
+          </div>
+
+          {/* MAIN ACTIONS (BIG CARDS) */}
+          <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px'}}>
+             <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, flexDirection:'column', gap:'12px', padding:'24px', background: THEME.primaryGradient, color:'white', fontSize:'20px', borderRadius:'16px', boxShadow: `0 10px 25px -5px ${THEME.primary}66`, border:`1px solid rgba(255,255,255,0.1)`}}>
+               <Tornado size={32} strokeWidth={1.5}/> 
+               <span style={{fontWeight:'800', letterSpacing:'1px'}}>NAGE-WAZA</span>
+             </button>
+             
+             <button onClick={abrirNeWaza} style={{...btnStyle, flexDirection:'column', gap:'10px', padding:'20px', background: THEME.card, border: `1px solid ${THEME.newaza}`, color: THEME.newaza, fontSize:'14px', borderRadius:'16px', boxShadow: `0 4px 20px -5px ${THEME.newaza}22`}}>
+               <Layers size={28}/> <span style={{fontWeight:'700'}}>NE-WAZA</span>
+             </button>
+             
+             <button onClick={abrirKumiKata} style={{...btnStyle, flexDirection:'column', gap:'10px', padding:'20px', background: THEME.card, border: `1px solid ${THEME.kumi}`, color: THEME.kumi, fontSize:'14px', borderRadius:'16px', boxShadow: `0 4px 20px -5px ${THEME.kumi}22`}}>
+               <Hand size={28}/> <span style={{fontWeight:'700'}}>KUMI-KATA</span>
+             </button>
+          </div>
+
+          {/* GAME CONTROLS */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button onClick={toggleFightState} style={{...btnStyle, flex:2, background: isFightActive ? '#ef4444' : '#10b981', color:'white', padding:'16px', borderRadius:'12px', fontSize:'16px', fontWeight:'700', boxShadow: '0 4px 10px rgba(0,0,0,0.3)'}}>
+              {isFightActive ? <><Pause size={20} fill="white"/> MATE (PAUSE)</> : <><Play size={20} fill="white"/> HAJIME (START)</>}
+            </button>
+            <button onClick={() => registrarFluxo('GOLDEN SCORE')} style={{...btnStyle, flex:1, background: THEME.warning, color:'#000', padding:'16px', borderRadius:'12px', fontSize:'13px', fontWeight:'700'}}><Clock size={18}/> GS</button>
+            <button onClick={() => registrarFluxo('SOREMADE')} style={{...btnStyle, flex:1, background: THEME.card, border:`1px solid ${THEME.cardBorder}`, color:THEME.text, padding:'16px', borderRadius:'12px', fontSize:'13px', fontWeight:'700'}}><Flag size={18}/> END</button>
+          </div>
+
+          {/* QUICK SHIDO */}
+          <div style={{...cardStyle, padding:'16px', display:'flex', alignItems:'center', gap:'12px'}}>
+             <AlertTriangle size={20} color={THEME.textDim}/>
+             <select style={{flex:1, background: THEME.bg, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'12px', borderRadius:'8px', fontSize: '13px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select>
+             <button onClick={() => registrarPunicaoDireto('SHIDO', 'BRANCO')} style={{...btnStyle, width:'48px', height:'44px', background:'#e2e8f0', color:'#0f172a', fontSize:'14px', borderRadius:'8px'}}>⚪</button>
+             <button onClick={() => registrarPunicaoDireto('SHIDO', 'AZUL')} style={{...btnStyle, width:'48px', height:'44px', background: THEME.primary, color:'white', fontSize:'14px', borderRadius:'8px'}}>🔵</button>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN (DASHBOARD + LOG) */}
+        <div className="no-print" style={{ flex: 2, width: '100%', display:'flex', flexDirection:'column', gap:'20px' }}>
+          
+          {/* PLAYLIST (COLLAPSIBLE) */}
+          {showPlaylist && (
+            <div style={{ ...cardStyle, padding: '12px', maxHeight: '150px', overflowY: 'auto' }}>
+              {playlist.map((item, index) => (
+                <div key={index} onClick={() => selecionarVideo(index)} style={{ padding: '10px', cursor: 'pointer', background: index === currentVideoIndex ? `${THEME.primary}22` : 'transparent', borderRadius: '6px', marginBottom: '4px', display:'flex', justifyContent:'space-between', alignItems:'center', border: index===currentVideoIndex ? `1px solid ${THEME.primary}66` : '1px solid transparent' }}>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>{item.type === 'YOUTUBE' ? <Video size={14} color={THEME.danger}/> : <Film size={14} color={THEME.primary}/>}<span style={{fontSize:'12px', color: index===currentVideoIndex ? THEME.primary : THEME.text}}>{item.name}</span></div>
+                  <button onClick={(e) => removerDaPlaylist(index, e)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><X size={14}/></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* SCOREBOARD (TV STYLE) */}
+          <div style={{ ...cardStyle, padding: '0', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1.2fr', overflow:'hidden' }}>
+            {/* WHITE */}
+            <div style={{ background:'white', padding:'20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent:'center', borderRight:`4px solid ${THEME.bg}` }}>
+                 <div style={{fontSize:'16px', fontWeight:'900', color:'#0f172a', textTransform:'uppercase', letterSpacing:'-0.5px'}}>{labelWhite}</div>
+                 <div style={{fontSize:'10px', color:'#64748b', fontWeight:'600'}}>{athleteWhite?.country || 'BRA'}</div>
+                 <div style={{display: 'flex', gap: '12px', marginTop: '12px'}}>
+                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: '#64748b', fontWeight:'700'}}>I</div><div style={{fontSize:'28px', fontWeight:'800', color:'#0f172a', lineHeight:'1'}}>{placar.branco.ippon}</div></div>
+                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: '#eab308', fontWeight:'700'}}>W</div><div style={{fontSize:'28px', fontWeight:'800', color:'#eab308', lineHeight:'1'}}>{placar.branco.waza}</div></div>
+                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: '#ef4444', fontWeight:'700'}}>S</div><div style={{fontSize:'28px', fontWeight:'800', color:'#ef4444', lineHeight:'1'}}>{placar.branco.shido}</div></div>
+                 </div>
+            </div>
+            {/* TIMER */}
+            <div style={{ background: THEME.card, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                 <div style={{fontSize: '10px', color: tempoDisplay.isGS ? THEME.warning : THEME.textDim, fontWeight: '700', letterSpacing:'1px', marginBottom:'4px'}}>{tempoDisplay.isGS ? 'GOLDEN SCORE' : 'TIME'}</div>
+                 <div style={{fontSize: '36px', fontFamily: 'JetBrains Mono, monospace', fontWeight: '700', color: tempoDisplay.isGS ? THEME.warning : 'white', letterSpacing:'-2px', lineHeight:'1'}}>{tempoDisplay.time}</div>
+            </div>
+            {/* BLUE */}
+            <div style={{ background: THEME.primary, padding:'20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent:'center', borderLeft:`4px solid ${THEME.bg}` }}>
+                 <div style={{fontSize:'16px', fontWeight:'900', color:'white', textTransform:'uppercase', letterSpacing:'-0.5px'}}>{labelBlue}</div>
+                 <div style={{fontSize:'10px', color:'rgba(255,255,255,0.7)', fontWeight:'600'}}>{athleteBlue?.country || 'FRA'}</div>
+                 <div style={{display: 'flex', gap: '12px', marginTop: '12px'}}>
+                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: 'rgba(255,255,255,0.6)', fontWeight:'700'}}>I</div><div style={{fontSize:'28px', fontWeight:'800', color:'white', lineHeight:'1'}}>{placar.azul.ippon}</div></div>
+                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: '#facc15', fontWeight:'700'}}>W</div><div style={{fontSize:'28px', fontWeight:'800', color:'#facc15', lineHeight:'1'}}>{placar.azul.waza}</div></div>
+                    <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: '#fca5a5', fontWeight:'700'}}>S</div><div style={{fontSize:'28px', fontWeight:'800', color:'#fca5a5', lineHeight:'1'}}>{placar.azul.shido}</div></div>
+                 </div>
+            </div>
+          </div>
+
+          {/* DASHBOARD TABS (SIMULATED) */}
+          <div style={{display:'flex', gap:'12px', overflowX:'auto', paddingBottom:'4px'}}>
+             <div style={{flex:1, ...cardStyle, padding:'15px', minWidth:'140px'}}>
+                <div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'700', marginBottom:'10px', display:'flex', gap:'6px'}}><Compass size={12}/> RADAR</div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                   <div style={{width:'50px', height:'50px', position:'relative'}}>
+                      {/* Mini Radar White */}
+                      <div style={{position:'absolute', top:0, left:'20px', opacity:radarStats.white.FRENTE}}><ArrowUp size={14} color="white"/></div>
+                      <div style={{position:'absolute', bottom:0, left:'20px', opacity:radarStats.white.TRAS}}><ArrowDown size={14} color="white"/></div>
+                      <div style={{position:'absolute', top:'20px', left:0, opacity:radarStats.white.ESQUERDA}}><ArrowLeft size={14} color="white"/></div>
+                      <div style={{position:'absolute', top:'20px', right:0, opacity:radarStats.white.DIREITA}}><ArrowRight size={14} color="white"/></div>
+                   </div>
+                   <div style={{width:'1px', height:'40px', background: THEME.cardBorder}}></div>
+                   <div style={{width:'50px', height:'50px', position:'relative'}}>
+                      {/* Mini Radar Blue */}
+                      <div style={{position:'absolute', top:0, left:'20px', opacity:radarStats.blue.FRENTE}}><ArrowUp size={14} color={THEME.primary}/></div>
+                      <div style={{position:'absolute', bottom:0, left:'20px', opacity:radarStats.blue.TRAS}}><ArrowDown size={14} color={THEME.primary}/></div>
+                      <div style={{position:'absolute', top:'20px', left:0, opacity:radarStats.blue.ESQUERDA}}><ArrowLeft size={14} color={THEME.primary}/></div>
+                      <div style={{position:'absolute', top:'20px', right:0, opacity:radarStats.blue.DIREITA}}><ArrowRight size={14} color={THEME.primary}/></div>
+                   </div>
+                </div>
+             </div>
+
+             <div style={{flex:1, ...cardStyle, padding:'15px', minWidth:'140px'}}>
+                <div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'700', marginBottom:'10px', display:'flex', gap:'6px'}}><Activity size={12}/> FLUXO</div>
+                <div style={{display:'flex', alignItems:'flex-end', height:'40px', gap:'2px', justifyContent:'space-between'}}>
+                    {momentumData.slice(-10).map((m: any) => (
+                        <div key={m.min} style={{width:'6px', background: m.branco > m.azul ? 'white' : THEME.primary, height: `${Math.min(30, (m.branco+m.azul) * 5 + 4)}px`, borderRadius:'2px', opacity:0.8}}></div>
+                    ))}
+                </div>
+             </div>
+             
+             <div style={{flex:1, ...cardStyle, padding:'15px', minWidth:'140px', position:'relative'}}>
+                <div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'700', marginBottom:'10px', display:'flex', gap:'6px'}}><MapPin size={12}/> MAPA</div>
+                <div style={{width:'100%', height:'40px', background: THEME.tatamiCenter, border:`2px solid ${THEME.tatamiDanger}`, position:'relative'}}>
+                   {eventos.slice(-5).filter((e:any) => e.coordenadas).map((e:any) => (<div key={e.id} style={{position:'absolute', top:`${e.coordenadas.y}%`, left:`${e.coordenadas.x}%`, width:'6px', height:'6px', background: e.atleta==='BRANCO'?'white':THEME.primary, borderRadius:'50%', border:'1px solid black'}}></div>))}
+                </div>
+             </div>
+          </div>
+
+          {/* TIMELINE (LOG) */}
+          <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:'12px', marginBottom:'12px' }}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                 <h3 style={{margin:0, fontSize:'14px', color: 'white', fontWeight:'700', display:'flex', gap:'8px', alignItems:'center'}}><List size={18} color={THEME.primary}/> TIMELINE DA LUTA</h3>
+                 <button onClick={playlistMode ? pararPlaylistPlayer : iniciarPlaylistPlayer} style={{...btnStyle, background: playlistMode ? THEME.danger : 'rgba(16, 185, 129, 0.1)', border: `1px solid ${playlistMode ? 'transparent' : THEME.success}`, color: playlistMode ? 'white' : THEME.success, padding:'6px 12px', fontSize:'11px', borderRadius:'20px'}}>
+                    {playlistMode ? <><X size={14}/> PARAR PLAY</> : <><PlayCircle size={14}/> ASSISTIR CLIPES</>}
+                 </button>
+              </div>
+              <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px'}}>
+                  {['TODOS', 'PONTOS', 'PUNICAO', 'NE-WAZA', 'BRANCO', 'AZUL'].map(f => (
+                      <button key={f} onClick={()=>setActiveFilter(f)} style={{...btnStyle, padding:'6px 10px', fontSize:'10px', borderRadius:'6px', background: activeFilter===f ? THEME.text : 'transparent', border: `1px solid ${activeFilter===f ? 'transparent' : THEME.cardBorder}`, color: activeFilter===f ? THEME.bg : THEME.textDim, fontWeight:'700'}}>{f}</button>
+                  ))}
+              </div>
+            </div>
+
+            <div style={{ ...cardStyle, flex:1, padding: '0', minHeight: '300px', overflowY: 'auto', background: THEME.bg }}>
+              {filteredEventos.map((ev: any) => (
+                <div key={ev.id} style={{ 
+                  padding: '12px 16px', borderBottom: `1px solid ${THEME.cardBorder}`, 
+                  background: playlistMode && playlistQueue[playlistQueueIndex]?.id === ev.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                  display:'flex', alignItems:'center', justifyContent:'space-between', fontSize: '13px'
+                }}>
+                  <div onClick={() => irParaEvento(ev)} style={{cursor:'pointer', flex:1, display:'flex', gap:'12px', alignItems:'center'}}>
+                    <div style={{fontFamily:'JetBrains Mono, monospace', color: THEME.textDim, fontSize:'11px', minWidth:'40px'}}>{formatTimeVideo(ev.tempo)}</div>
+                    
+                    {/* ICONE CATEGORIA */}
+                    <div style={{width:'24px', display:'flex', justifyContent:'center'}}>
+                        {ev.categoria === 'TECNICA' && <Tornado size={16} color={ev.atleta==='BRANCO'?'white':THEME.primary}/>}
+                        {ev.categoria === 'PUNICAO' && (ev.tipo === 'SHIDO' ? <AlertTriangle size={16} color={THEME.warning}/> : <AlertOctagon size={16} color={THEME.danger}/>)}
+                        {ev.categoria === 'NE-WAZA' && <Layers size={16} color={THEME.newaza}/>}
+                        {ev.categoria === 'KUMI-KATA' && <Hand size={16} color={THEME.kumi}/>}
+                        {ev.categoria === 'ANALISE' && <PenTool size={16} color="#a855f7"/>}
+                        {ev.categoria === 'FLUXO' && <Clock size={16} color={THEME.neutral}/>}
+                    </div>
+
+                    <div style={{flex:1}}>
+                        <div style={{fontWeight:'600', color: ev.atleta === 'AZUL' ? THEME.primary : 'white', fontSize: '14px', display:'flex', alignItems:'center', gap:'6px'}}>
+                            {ev.especifico || ev.tipo}
+                            {ev.direcao && <span style={{fontSize:'10px', background: 'rgba(255,255,255,0.1)', padding:'1px 4px', borderRadius:'3px'}}>{ev.direcao === 'FRENTE' ? '⬆' : ev.direcao === 'TRAS' ? '⬇' : ev.direcao === 'ESQUERDA' ? '⬅' : '➡'}</span>}
+                        </div>
+                        {ev.resultado && ev.resultado !== 'NADA' && ev.resultado !== 'Mate' && <div style={{marginTop:'2px', fontSize:'11px', color: ev.resultado.includes('Ippon') ? THEME.success : THEME.warning, fontWeight:'700', textTransform:'uppercase'}}>{ev.resultado}</div>}
+                    </div>
+                  </div>
+
+                  <div style={{display:'flex', gap:'4px', opacity:0.5}} className="actions">
+                    {ev.categoria === 'ANALISE' ? (
+                       <button onClick={() => irParaEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Eye size={14}/></button>
+                    ) : (
+                       <button onClick={() => editarEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Edit2 size={14}/></button>
+                    )}
+                    <button onClick={() => setEventos(eventos.filter((e:any) => e.id !== ev.id))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><X size={14}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -383,20 +704,18 @@ export default function JudoPlayer() {
                <h2 style={{margin:0, color: 'white', fontSize:'18px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Users size={20}/> BANCO DE ATLETAS</h2>
                <button onClick={() => setModalAthletes(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'6px', borderRadius:'50%'}}><X size={18}/></button>
              </div>
-             
-             <div style={{background: THEME.surface, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, marginBottom:'20px'}}>
+             <div style={{background: THEME.bg, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, marginBottom:'20px'}}>
                 <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:'10px', marginBottom:'10px'}}>
-                   <input type="text" placeholder="Nome Completo" value={newAthleteName} onChange={e => setNewAthleteName(e.target.value)} style={{padding:'8px', borderRadius:'4px', border:'none', fontSize:'12px'}} />
-                   <input type="text" placeholder="País (BRA)" value={newAthleteCountry} onChange={e => setNewAthleteCountry(e.target.value)} style={{padding:'8px', borderRadius:'4px', border:'none', fontSize:'12px'}} />
-                   <input type="text" placeholder="Clube" value={newAthleteClub} onChange={e => setNewAthleteClub(e.target.value)} style={{padding:'8px', borderRadius:'4px', border:'none', fontSize:'12px'}} />
+                   <input type="text" placeholder="Nome Completo" value={newAthleteName} onChange={e => setNewAthleteName(e.target.value)} style={{padding:'12px', borderRadius:'6px', border:'none', fontSize:'13px', background: THEME.card, color:'white'}} />
+                   <input type="text" placeholder="País (BRA)" value={newAthleteCountry} onChange={e => setNewAthleteCountry(e.target.value)} style={{padding:'12px', borderRadius:'6px', border:'none', fontSize:'13px', background: THEME.card, color:'white'}} />
+                   <input type="text" placeholder="Clube" value={newAthleteClub} onChange={e => setNewAthleteClub(e.target.value)} style={{padding:'12px', borderRadius:'6px', border:'none', fontSize:'13px', background: THEME.card, color:'white'}} />
                 </div>
-                <button onClick={saveAthlete} style={{...btnStyle, width:'100%', padding:'10px', background: THEME.success, color:'white', fontSize:'12px', fontWeight:'700'}}><UserPlus size={14}/> ADICIONAR ATLETA</button>
+                <button onClick={saveAthlete} style={{...btnStyle, width:'100%', padding:'12px', background: THEME.success, color:'white', fontSize:'13px', fontWeight:'700'}}><UserPlus size={16}/> ADICIONAR ATLETA</button>
              </div>
-
              <div style={{maxHeight:'300px', overflowY:'auto'}}>
                  {athletes.length === 0 && <div style={{textAlign:'center', color: THEME.textDim, fontSize:'12px', padding:'20px'}}>Nenhum atleta cadastrado.</div>}
                  {athletes.map(a => (
-                     <div key={a.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px', borderBottom:`1px solid ${THEME.cardBorder}`}}>
+                     <div key={a.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px', borderBottom:`1px solid ${THEME.cardBorder}`}}>
                          <div>
                              <div style={{fontWeight:'700', color:'white', fontSize:'14px'}}>{a.name}</div>
                              <div style={{fontSize:'11px', color:THEME.textDim}}>{a.country} • {a.club}</div>
@@ -440,7 +759,7 @@ export default function JudoPlayer() {
             
             <div style={{marginBottom:'15px'}}>
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'5px', fontWeight:'600'}}>QUEM É O BRANCO?</div>
-               <select value={metaWhiteId} onChange={e => setMetaWhiteId(e.target.value)} style={{width:'100%', padding:'10px', background: 'white', border:`1px solid ${THEME.cardBorder}`, color: 'black', borderRadius:'8px', fontWeight:'700'}}>
+               <select value={metaWhiteId} onChange={e => setMetaWhiteId(e.target.value)} style={{width:'100%', padding:'12px', background: 'white', border:`1px solid ${THEME.cardBorder}`, color: 'black', borderRadius:'8px', fontWeight:'700', fontSize:'13px'}}>
                   <option value="">-- Atleta Desconhecido --</option>
                   {athletes.map(a => <option key={a.id} value={a.id}>{a.name} ({a.country})</option>)}
                </select>
@@ -448,7 +767,7 @@ export default function JudoPlayer() {
 
             <div style={{marginBottom:'15px'}}>
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'5px', fontWeight:'600'}}>QUEM É O AZUL?</div>
-               <select value={metaBlueId} onChange={e => setMetaBlueId(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.primary, border:`1px solid ${THEME.cardBorder}`, color: 'white', borderRadius:'8px', fontWeight:'700'}}>
+               <select value={metaBlueId} onChange={e => setMetaBlueId(e.target.value)} style={{width:'100%', padding:'12px', background: THEME.primary, border:`1px solid ${THEME.cardBorder}`, color: 'white', borderRadius:'8px', fontWeight:'700', fontSize:'13px'}}>
                   <option value="">-- Atleta Desconhecido --</option>
                   {athletes.map(a => <option key={a.id} value={a.id}>{a.name} ({a.country})</option>)}
                </select>
@@ -458,23 +777,23 @@ export default function JudoPlayer() {
 
             <div style={{marginBottom:'15px'}}>
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'5px', fontWeight:'600'}}>NOME DO EVENTO</div>
-               <input type="text" value={metaEvent} onChange={e => setMetaEvent(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}} placeholder="Ex: Grand Slam Paris 2025" />
+               <input type="text" value={metaEvent} onChange={e => setMetaEvent(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.bg, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}} placeholder="Ex: Grand Slam Paris 2025" />
             </div>
 
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px', marginBottom:'15px'}}>
                <div>
                   <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'5px', fontWeight:'600'}}>DATA</div>
-                  <input type="text" value={metaDate} onChange={e => setMetaDate(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}} placeholder="DD/MM/AAAA" />
+                  <input type="text" value={metaDate} onChange={e => setMetaDate(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.bg, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}} placeholder="DD/MM/AAAA" />
                </div>
                <div>
                   <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'5px', fontWeight:'600'}}>CATEGORIA</div>
-                  <input type="text" value={metaCat} onChange={e => setMetaCat(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}} placeholder="-81kg" />
+                  <input type="text" value={metaCat} onChange={e => setMetaCat(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.bg, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}} placeholder="-81kg" />
                </div>
             </div>
 
             <div style={{marginBottom:'24px'}}>
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'5px', fontWeight:'600'}}>FASE DA LUTA</div>
-               <select value={metaPhase} onChange={e => setMetaPhase(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}}>
+               <select value={metaPhase} onChange={e => setMetaPhase(e.target.value)} style={{width:'100%', padding:'10px', background: THEME.bg, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px'}}>
                   <option value="">Selecione...</option>
                   {DB_FASES.map(f => <option key={f} value={f}>{f}</option>)}
                </select>
@@ -482,7 +801,7 @@ export default function JudoPlayer() {
 
             <div style={{display:'flex', gap:'10px'}}>
                <button onClick={saveMetadata} style={{...btnStyle, flex:1, padding:'12px', background: THEME.primary, color:'white', fontWeight:'700'}}>SALVAR</button>
-               <button onClick={applyMetadataToAll} style={{...btnStyle, flex:1, padding:'12px', background: THEME.surface, border:`1px solid ${THEME.primary}`, color:THEME.primary, fontWeight:'700'}}>APLICAR A TODOS</button>
+               <button onClick={applyMetadataToAll} style={{...btnStyle, flex:1, padding:'12px', background: THEME.bg, border:`1px solid ${THEME.primary}`, color:THEME.primary, fontWeight:'700'}}>APLICAR A TODOS</button>
             </div>
           </div>
         </div>
@@ -493,8 +812,8 @@ export default function JudoPlayer() {
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
             <div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`, marginBottom:'20px'}}>
-               <button onClick={() => setNwAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: nwAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:nwAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ {labelWhite}</button>
-               <button onClick={() => setNwAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: nwAtleta==='AZUL'?THEME.primary:THEME.surface, color:nwAtleta==='AZUL'?'white':THEME.textDim}}>🔵 {labelBlue}</button>
+               <button onClick={() => setNwAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: nwAtleta==='BRANCO'?'#e2e8f0':THEME.bg, color:nwAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ {labelWhite}</button>
+               <button onClick={() => setNwAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: nwAtleta==='AZUL'?THEME.primary:THEME.bg, color:nwAtleta==='AZUL'?'white':THEME.textDim}}>🔵 {labelBlue}</button>
             </div>
 
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
@@ -506,29 +825,29 @@ export default function JudoPlayer() {
                <div>
                   <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>ENTRADA</div>
                   <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
-                     <button onClick={() => setNwEntrada('DIRETA')} style={{...btnStyle, padding:'8px', background: nwEntrada==='DIRETA'?THEME.success:THEME.surface, color:nwEntrada==='DIRETA'?'white':THEME.textDim, fontSize:'11px'}}>DIRETA (Conexão)</button>
-                     <button onClick={() => setNwEntrada('PAUSA')} style={{...btnStyle, padding:'8px', background: nwEntrada==='PAUSA'?THEME.warning:THEME.surface, color:nwEntrada==='PAUSA'?'black':THEME.textDim, fontSize:'11px'}}>PAUSA (Análise)</button>
+                     <button onClick={() => setNwEntrada('DIRETA')} style={{...btnStyle, padding:'8px', background: nwEntrada==='DIRETA'?THEME.success:THEME.bg, color:nwEntrada==='DIRETA'?'white':THEME.textDim, fontSize:'11px'}}>DIRETA (Conexão)</button>
+                     <button onClick={() => setNwEntrada('PAUSA')} style={{...btnStyle, padding:'8px', background: nwEntrada==='PAUSA'?THEME.warning:THEME.bg, color:nwEntrada==='PAUSA'?'black':THEME.textDim, fontSize:'11px'}}>PAUSA (Análise)</button>
                   </div>
                </div>
                <div>
                   <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>POSIÇÃO</div>
                   <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
-                     <button onClick={() => {setNwPosicao('POR CIMA'); setNwAcao(DB_NW_ACOES_TOP[0])}} style={{...btnStyle, padding:'8px', background: nwPosicao==='POR CIMA'?THEME.primary:THEME.surface, color:nwPosicao==='POR CIMA'?'white':THEME.textDim, fontSize:'11px'}}>POR CIMA</button>
-                     <button onClick={() => {setNwPosicao('POR BAIXO'); setNwAcao(DB_NW_ACOES_BOTTOM[0])}} style={{...btnStyle, padding:'8px', background: nwPosicao==='POR BAIXO'?THEME.danger:THEME.surface, color:nwPosicao==='POR BAIXO'?'white':THEME.textDim, fontSize:'11px'}}>POR BAIXO</button>
+                     <button onClick={() => {setNwPosicao('POR CIMA'); setNwAcao(DB_NW_ACOES_TOP[0])}} style={{...btnStyle, padding:'8px', background: nwPosicao==='POR CIMA'?THEME.primary:THEME.bg, color:nwPosicao==='POR CIMA'?'white':THEME.textDim, fontSize:'11px'}}>POR CIMA</button>
+                     <button onClick={() => {setNwPosicao('POR BAIXO'); setNwAcao(DB_NW_ACOES_BOTTOM[0])}} style={{...btnStyle, padding:'8px', background: nwPosicao==='POR BAIXO'?THEME.danger:THEME.bg, color:nwPosicao==='POR BAIXO'?'white':THEME.textDim, fontSize:'11px'}}>POR BAIXO</button>
                   </div>
                </div>
             </div>
 
             <div style={{marginBottom:'15px'}}>
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>AÇÃO ESPECÍFICA</div>
-               <select value={nwAcao} onChange={(e) => setNwAcao(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.newaza}`}}>
+               <select value={nwAcao} onChange={(e) => setNwAcao(e.target.value)} style={{width:'100%', background: THEME.bg, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.newaza}`}}>
                   {(nwPosicao === 'POR CIMA' ? DB_NW_ACOES_TOP : DB_NW_ACOES_BOTTOM).map(a => <option key={a} value={a}>{a}</option>)}
                </select>
             </div>
 
             <div style={{marginBottom:'15px'}}>
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TÉCNICA NOMEADA (OPCIONAL)</div>
-               <select value={nwTecnica} onChange={(e) => setNwTecnica(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
+               <select value={nwTecnica} onChange={(e) => setNwTecnica(e.target.value)} style={{width:'100%', background: THEME.bg, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
                   <option value="">-- Nenhuma --</option>
                   {Object.keys(DB_NE_WAZA_LIST).map(t => <option key={t} value={t}>{t} ({DB_NE_WAZA_LIST[t]})</option>)}
                </select>
@@ -536,12 +855,12 @@ export default function JudoPlayer() {
 
             <div style={{marginBottom:'24px'}}>
                <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>DESFECHO</div>
-               <select value={nwDesfecho} onChange={(e) => setNwDesfecho(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
+               <select value={nwDesfecho} onChange={(e) => setNwDesfecho(e.target.value)} style={{width:'100%', background: THEME.bg, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
                   {DB_NW_DESFECHOS.map(d => <option key={d} value={d}>{d}</option>)}
                </select>
             </div>
 
-            <button onClick={salvarNeWaza} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.newaza, color:'white', fontSize:'16px', fontWeight:'700'}}>REGISTRAR SOLO</button>
+            <button onClick={salvarNeWaza} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.newazaGradient, color:'white', fontSize:'16px', fontWeight:'700'}}>REGISTRAR SOLO</button>
           </div>
         </div>
       )}
@@ -552,8 +871,8 @@ export default function JudoPlayer() {
           <div style={{ ...cardStyle, width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
             
             <div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`, marginBottom:'20px'}}>
-               <button onClick={() => setKumiAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: kumiAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:kumiAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ {labelWhite}</button>
-               <button onClick={() => setKumiAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: kumiAtleta==='AZUL'?THEME.primary:THEME.surface, color:kumiAtleta==='AZUL'?'white':THEME.textDim}}>🔵 {labelBlue}</button>
+               <button onClick={() => setKumiAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: kumiAtleta==='BRANCO'?'#e2e8f0':THEME.bg, color:kumiAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ {labelWhite}</button>
+               <button onClick={() => setKumiAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: kumiAtleta==='AZUL'?THEME.primary:THEME.bg, color:kumiAtleta==='AZUL'?'white':THEME.textDim}}>🔵 {labelBlue}</button>
             </div>
 
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
@@ -572,19 +891,19 @@ export default function JudoPlayer() {
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px', marginBottom:'24px'}}>
                <div>
                   <div style={{fontSize:'11px', color: '#f59e0b', marginBottom:'8px', fontWeight:'600'}}>MÃO DIREITA</div>
-                  <select value={kumiDir} onChange={(e) => setKumiDir(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid #f59e0b`}}>
+                  <select value={kumiDir} onChange={(e) => setKumiDir(e.target.value)} style={{width:'100%', background: THEME.bg, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid #f59e0b`}}>
                      {DB_PEGADAS.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                </div>
                <div>
                   <div style={{fontSize:'11px', color: '#8b5cf6', marginBottom:'8px', fontWeight:'600'}}>MÃO ESQUERDA</div>
-                  <select value={kumiEsq} onChange={(e) => setKumiEsq(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid #8b5cf6`}}>
+                  <select value={kumiEsq} onChange={(e) => setKumiEsq(e.target.value)} style={{width:'100%', background: THEME.bg, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid #8b5cf6`}}>
                      {DB_PEGADAS.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                </div>
             </div>
 
-            <button onClick={salvarKumiKata} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.success, color:'white', fontSize:'16px', fontWeight:'700'}}>CONFIRMAR PEGADA</button>
+            <button onClick={salvarKumiKata} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.kumiGradient, color:'white', fontSize:'16px', fontWeight:'700'}}>CONFIRMAR PEGADA</button>
           </div>
         </div>
       )}
@@ -607,20 +926,20 @@ export default function JudoPlayer() {
                   <button onClick={() => confirmarPunicao('AZUL')} style={{...btnStyle, padding:'30px', background: THEME.primary, color: 'white', fontSize:'18px', flexDirection:'column'}}><div style={{width:'40px', height:'40px', borderRadius:'50%', background:'blue', border:'4px solid white'}}></div>AZUL</button>
                 </div>
                 <div style={{fontSize:'12px', color: THEME.textDim, marginBottom:'8px'}}>Motivo (Opcional):</div>
-                <select style={{width:'100%', background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'12px', borderRadius:'8px', fontSize: '14px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                <select style={{width:'100%', background: THEME.bg, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'12px', borderRadius:'8px', fontSize: '14px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select>
               </div>
             ) : (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                  <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>QUEM?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:modalAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ {labelWhite}</button><button onClick={()=>setModalAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='AZUL'?THEME.primary:THEME.surface, color:modalAtleta==='AZUL'?'white':THEME.textDim}}>🔵 {labelBlue}</button></div></div>
-                  <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>LADO?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalLado('ESQUERDA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='ESQUERDA'?THEME.warning:THEME.surface, color:modalLado==='ESQUERDA'?'#0f172a':THEME.textDim, fontSize:'11px'}}>ESQ</button><button onClick={()=>setModalLado('DIREITA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='DIREITA'?THEME.success:THEME.surface, color:modalLado==='DIREITA'?'white':THEME.textDim, fontSize:'11px'}}>DIR</button></div></div>
+                  <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>QUEM?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='BRANCO'?'#e2e8f0':THEME.bg, color:modalAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ {labelWhite}</button><button onClick={()=>setModalAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalAtleta==='AZUL'?THEME.primary:THEME.bg, color:modalAtleta==='AZUL'?'white':THEME.textDim}}>🔵 {labelBlue}</button></div></div>
+                  <div><div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>LADO?</div><div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}><button onClick={()=>setModalLado('ESQUERDA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='ESQUERDA'?THEME.warning:THEME.bg, color:modalLado==='ESQUERDA'?'#0f172a':THEME.textDim, fontSize:'11px'}}>ESQ</button><button onClick={()=>setModalLado('DIREITA')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: modalLado==='DIREITA'?THEME.success:THEME.bg, color:modalLado==='DIREITA'?'white':THEME.textDim, fontSize:'11px'}}>DIR</button></div></div>
                 </div>
 
                 <div style={{display:'flex', gap:'20px'}}>
                    <div style={{flex:2}}>
                       <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TÉCNICA DE ARREMESSO</div>
-                      <div style={{position:'relative'}}><Search size={18} style={{position:'absolute', top:'13px', left:'14px', color: THEME.textDim}}/><input ref={inputRef} type="text" placeholder="Digite o nome..." value={modalNome} onChange={e=>setModalNome(e.target.value)} style={{width:'100%', padding:'12px 12px 12px 42px', background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px', fontSize:'15px', outline:'none', boxSizing:'border-box'}}/></div>
-                      {sugestoes.length > 0 && (<div style={{position:'absolute', width:'100%', background: THEME.card, zIndex:100, border:`1px solid ${THEME.cardBorder}`, borderRadius:'8px', marginTop:'4px', boxShadow:'0 10px 15px -3px rgba(0, 0, 0, 0.3)', overflow:'hidden'}}>{sugestoes.map(s=>(<div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'12px', borderBottom:`1px solid ${THEME.cardBorder}`, cursor:'pointer', display:'flex', justifyContent:'space-between', fontSize:'14px'}}><span>{s}</span><span style={{fontSize:'10px', background:THEME.surface, padding:'2px 6px', borderRadius:'4px', color:THEME.textDim}}>{DB_GOLPES[s]}</span></div>))}</div>)}
+                      <div style={{position:'relative'}}><Search size={18} style={{position:'absolute', top:'13px', left:'14px', color: THEME.textDim}}/><input ref={inputRef} type="text" placeholder="Digite o nome..." value={modalNome} onChange={e=>setModalNome(e.target.value)} style={{width:'100%', padding:'12px 12px 12px 42px', background: THEME.bg, border:`1px solid ${THEME.cardBorder}`, color: THEME.text, borderRadius:'8px', fontSize:'15px', outline:'none', boxSizing:'border-box'}}/></div>
+                      {sugestoes.length > 0 && (<div style={{position:'absolute', width:'100%', background: THEME.card, zIndex:100, border:`1px solid ${THEME.cardBorder}`, borderRadius:'8px', marginTop:'4px', boxShadow:'0 10px 15px -3px rgba(0, 0, 0, 0.3)', overflow:'hidden'}}>{sugestoes.map(s=>(<div key={s} onClick={()=>{setModalNome(s); const exact=Object.keys(DB_GOLPES).find(k=>k.toLowerCase()===s.toLowerCase()); if(exact) setModalGrupo(DB_GOLPES[exact] as any); setSugestoes([])}} style={{padding:'12px', borderBottom:`1px solid ${THEME.cardBorder}`, cursor:'pointer', display:'flex', justifyContent:'space-between', fontSize:'14px'}}><span>{s}</span><span style={{fontSize:'10px', background:THEME.bg, padding:'2px 6px', borderRadius:'4px', color:THEME.textDim}}>{DB_GOLPES[s]}</span></div>))}</div>)}
                    </div>
 
                    {/* TATAME INTERATIVO */}
@@ -638,13 +957,13 @@ export default function JudoPlayer() {
                       <div style={{fontSize:'10px', color: THEME.textDim, marginBottom:'6px', fontWeight:'600'}}>DIREÇÃO</div>
                       <div style={{display:'grid', gridTemplateColumns:'24px 24px 24px', gridTemplateRows:'24px 24px 24px', gap:'2px'}}>
                           <div></div>
-                          <button onClick={()=>setModalDirecao('FRENTE')} style={{background: modalDirecao==='FRENTE'?THEME.primary:THEME.surface, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowUp size={14}/></button>
+                          <button onClick={()=>setModalDirecao('FRENTE')} style={{background: modalDirecao==='FRENTE'?THEME.primary:THEME.bg, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowUp size={14}/></button>
                           <div></div>
-                          <button onClick={()=>setModalDirecao('ESQUERDA')} style={{background: modalDirecao==='ESQUERDA'?THEME.primary:THEME.surface, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowLeft size={14}/></button>
+                          <button onClick={()=>setModalDirecao('ESQUERDA')} style={{background: modalDirecao==='ESQUERDA'?THEME.primary:THEME.bg, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowLeft size={14}/></button>
                           <div style={{background:THEME.cardBorder, borderRadius:'50%', width:'10px', height:'10px', margin:'auto'}}></div>
-                          <button onClick={()=>setModalDirecao('DIREITA')} style={{background: modalDirecao==='DIREITA'?THEME.primary:THEME.surface, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowRight size={14}/></button>
+                          <button onClick={()=>setModalDirecao('DIREITA')} style={{background: modalDirecao==='DIREITA'?THEME.primary:THEME.bg, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowRight size={14}/></button>
                           <div></div>
-                          <button onClick={()=>setModalDirecao('TRAS')} style={{background: modalDirecao==='TRAS'?THEME.primary:THEME.surface, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowDown size={14}/></button>
+                          <button onClick={()=>setModalDirecao('TRAS')} style={{background: modalDirecao==='TRAS'?THEME.primary:THEME.bg, border:`1px solid ${THEME.cardBorder}`, borderRadius:'4px', color:'white', display:'flex', alignItems:'center', justifyContent:'center'}}><ArrowDown size={14}/></button>
                           <div></div>
                       </div>
                    </div>
@@ -653,10 +972,10 @@ export default function JudoPlayer() {
                 <div style={{marginTop:'24px'}}>
                   <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>RESULTADO (SELECIONADO: {resultadoPreSelecionado || 'NENHUM'})</div>
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-                    <button onClick={() => confirmarEContinuar('NADA')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='NADA'?THEME.text:THEME.cardBorder, color: resultadoPreSelecionado==='NADA'?'black':THEME.textDim}}>NADA (N)</button>
-                    <button onClick={() => confirmarEContinuar('YUKO')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='YUKO'?THEME.text:THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: resultadoPreSelecionado==='YUKO'?'black':THEME.text}}>YUKO (Y)</button>
+                    <button onClick={() => confirmarEContinuar('NADA')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='NADA'?THEME.text:THEME.bg, color: resultadoPreSelecionado==='NADA'?'black':THEME.textDim, border:`1px solid ${THEME.cardBorder}`}}>NADA (N)</button>
+                    <button onClick={() => confirmarEContinuar('YUKO')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='YUKO'?THEME.text:THEME.bg, border:`1px solid ${THEME.cardBorder}`, color: resultadoPreSelecionado==='YUKO'?'black':THEME.text}}>YUKO (Y)</button>
                     <button onClick={() => confirmarEContinuar('WAZA-ARI')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='WAZA-ARI'?THEME.warning:`rgba(234, 179, 8, 0.1)`, border:`1px solid ${THEME.warning}`, color: resultadoPreSelecionado==='WAZA-ARI'?'black':THEME.warning}}>WAZA-ARI (W)</button>
-                    <button onClick={() => confirmarEContinuar('IPPON')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='IPPON'?THEME.text:THEME.surface, color: resultadoPreSelecionado==='IPPON'?'black':THEME.text, border:`2px solid ${THEME.text}`}}>IPPON (I)</button>
+                    <button onClick={() => confirmarEContinuar('IPPON')} style={{...btnStyle, padding: '14px', background: resultadoPreSelecionado==='IPPON'?THEME.text:THEME.bg, color: resultadoPreSelecionado==='IPPON'?'black':THEME.text, border:`2px solid ${THEME.text}`}}>IPPON (I)</button>
                   </div>
                 </div>
               </>
@@ -664,283 +983,6 @@ export default function JudoPlayer() {
           </div>
         </div>
       )}
-
-      {/* ÁREA PRINCIPAL */}
-      <div className="no-print" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row' }}>
-        
-        {/* COLUNA ESQUERDA */}
-        <div style={{ flex: 3, width: '100%' }}>
-          <div ref={playerContainerRef} style={{ ...cardStyle, position: isDataFullscreen ? 'fixed' : 'relative', top: isDataFullscreen ? 0 : 'auto', left: isDataFullscreen ? 0 : 'auto', width: isDataFullscreen ? '100vw' : '100%', height: isDataFullscreen ? '100vh' : 'auto', paddingTop: isDataFullscreen ? 0 : '56.25%', marginBottom: '20px', zIndex: isDataFullscreen ? 999 : 1 }}>
-               
-               {/* CAMADA DE DESENHO (CANVAS) */}
-               {isDrawingMode && (
-                 <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', zIndex:20, cursor: drawTool==='PEN' ? 'crosshair' : 'default'}}>
-                   <canvas ref={canvasRef} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{width:'100%', height:'100%'}} />
-                   {/* TOOLBAR FLUTUANTE */}
-                   <div style={{position:'absolute', top:'10px', left:'10px', background:'rgba(0,0,0,0.8)', padding:'8px', borderRadius:'8px', display:'flex', gap:'8px', backdropFilter:'blur(4px)', border:`1px solid ${THEME.cardBorder}`}}>
-                     <button onClick={() => setDrawTool('PEN')} style={{...btnStyle, background: drawTool==='PEN'?THEME.primary:'transparent', color:'white', padding:'6px'}}><PenTool size={18}/></button>
-                     <button onClick={() => setDrawTool('ARROW')} style={{...btnStyle, background: drawTool==='ARROW'?THEME.primary:'transparent', color:'white', padding:'6px'}}><ArrowUpRight size={18}/></button>
-                     <button onClick={() => setDrawTool('ANGLE')} style={{...btnStyle, background: drawTool==='ANGLE'?THEME.primary:'transparent', color:'white', padding:'6px'}}><Triangle size={18}/></button>
-                     <div style={{width:'1px', background:'white', opacity:0.2, margin:'0 4px'}}></div>
-                     <button onClick={() => setDrawColor('#eab308')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#eab308', border: drawColor==='#eab308'?'2px solid white':'none', cursor:'pointer'}}></button>
-                     <button onClick={() => setDrawColor('#ef4444')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#ef4444', border: drawColor==='#ef4444'?'2px solid white':'none', cursor:'pointer'}}></button>
-                     <button onClick={() => setDrawColor('#3b82f6')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#3b82f6', border: drawColor==='#3b82f6'?'2px solid white':'none', cursor:'pointer'}}></button>
-                     <button onClick={() => setDrawColor('#ffffff')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#ffffff', border: drawColor==='#ffffff'?'2px solid white':'none', cursor:'pointer'}}></button>
-                     <div style={{width:'1px', background:'white', opacity:0.2, margin:'0 4px'}}></div>
-                     <button onClick={clearCanvas} style={{...btnStyle, background:'transparent', color:THEME.danger, padding:'6px'}}><Eraser size={18}/></button>
-                     <button onClick={salvarDesenhoNoLog} style={{...btnStyle, background:THEME.success, color:'white', padding:'6px'}}><Save size={18}/></button>
-                     <button onClick={() => toggleDrawingMode()} style={{...btnStyle, background: THEME.surface, color:'white', padding:'6px'}}><X size={18}/></button>
-                   </div>
-                 </div>
-               )}
-
-               {/* OVERLAY DE FOCO */}
-               {!isDrawingMode && <div onClick={toggleVideo} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>}
-               
-               {currentVideo.type === 'YOUTUBE' ? (
-                 <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%'}}>
-                    <YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, controls: 1, rel: 0, showinfo: 0, ecver: 2, iv_load_policy: 3, modestbranding: 1, playsinline: 1 } }} style={{width:'100%', height:'100%'}}/>
-                 </div>
-               ) : (
-                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>
-               )}
-          </div>
-
-          {/* BARRA DE CONTROLE (PRECISION DECK) */}
-          <div style={{...cardStyle, padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', borderTop: `4px solid ${THEME.primary}`}}>
-             
-             {/* ESQUERDA: VIDEO NAV */}
-             <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                <button onClick={videoAnterior} disabled={currentVideoIndex===0} style={{...btnStyle, background:'transparent', color:currentVideoIndex===0?THEME.cardBorder:THEME.textDim}}><SkipBack size={18}/></button>
-                
-                <div style={{display:'flex', alignItems:'center', background: THEME.surface, padding:'4px', borderRadius:'20px', border:`1px solid ${THEME.cardBorder}`, gap:'4px'}}>
-                  <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="-0.05s"><ChevronLeft size={18}/></button>
-                  <button onClick={toggleVideo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.primary, borderRadius: '50%', border: 'none', cursor: 'pointer', width: '48px', height: '48px', padding: 0, boxShadow: `0 0 15px ${THEME.primary}66`, flexShrink: 0 }}>
-                      {isPlaying ? <Pause size={24} color="white" fill="white" strokeWidth={2} /> : <Play size={24} color="white" fill="white" strokeWidth={2} style={{marginLeft:'4px'}} /> }
-                  </button>
-                  <button onClick={() => stepFrame(1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="+0.05s"><ChevronRight size={18}/></button>
-                </div>
-
-                <button onClick={proximoVideo} disabled={currentVideoIndex===playlist.length-1} style={{...btnStyle, background:'transparent', color:currentVideoIndex===playlist.length-1?THEME.cardBorder:THEME.textDim}}><SkipForward size={18}/></button>
-             </div>
-
-             {/* CENTRO: LOOP */}
-             <div style={{display:'flex', gap:'8px', background: THEME.surface, padding:'4px 8px', borderRadius:'8px', border: `1px solid ${loopRange ? THEME.warning : THEME.cardBorder}`}}>
-                <button onClick={() => setLoopPoint('A')} style={{...btnStyle, color: loopRange?.start ? THEME.warning : THEME.textDim, fontSize:'10px'}}>A</button>
-                <span style={{color:THEME.cardBorder}}>|</span>
-                <button onClick={() => setLoopPoint('B')} style={{...btnStyle, color: loopRange?.end ? THEME.warning : THEME.textDim, fontSize:'10px'}}>B</button>
-                {loopRange && <button onClick={clearLoop} style={{...btnStyle, color: THEME.danger}}><X size={12}/></button>}
-             </div>
-
-             {/* DIREITA: TOOLS */}
-             <div style={{display:'flex', gap:'8px'}}>
-                <button onClick={() => toggleDrawingMode()} style={{...btnStyle, background: isDrawingMode ? THEME.primary : 'transparent', color: isDrawingMode ? 'white' : THEME.textDim}}><PenTool size={16}/></button>
-                <div style={{width:'1px', background: THEME.cardBorder, height:'20px', alignSelf:'center'}}></div>
-                <button onClick={() => mudarVelocidade(0.25)} style={{...btnStyle, background: playbackRate===0.25 ? THEME.warning : 'transparent', color: playbackRate===0.25 ? 'black' : THEME.textDim, fontSize:'11px', fontWeight:'700'}}>0.25x</button>
-                <button onClick={() => mudarVelocidade(1.0)} style={{...btnStyle, background: playbackRate===1.0 ? THEME.success : 'transparent', color: playbackRate===1.0 ? 'white' : THEME.textDim, fontSize:'11px', fontWeight:'700'}}>1.0x</button>
-             </div>
-          </div>
-
-          <div style={{display: 'flex', gap: '12px', marginBottom: '24px'}}>
-             <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, flex: 2, padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`}}>
-               <Tornado size={24}/> NAGE-WAZA
-             </button>
-             <button onClick={abrirNeWaza} style={{...btnStyle, flex: 1, padding:'24px', background: THEME.card, border: `1px solid ${THEME.newaza}`, color: THEME.newaza, fontSize:'16px'}}>
-               <Layers size={24}/> NE-WAZA
-             </button>
-             <button onClick={abrirKumiKata} style={{...btnStyle, flex: 1, padding:'24px', background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: '#f59e0b', fontSize:'16px'}}>
-               <Hand size={24}/> KUMI-KATA
-             </button>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-            <button onClick={toggleFightState} style={{...btnStyle, background: isFightActive ? THEME.danger : THEME.success, color:'white', padding:'16px'}}>
-              {isFightActive ? <><Pause size={20}/> MATE (ESPAÇO)</> : <><Play size={20}/> HAJIME (ESPAÇO)</>}
-            </button>
-            <div style={{display:'flex', gap:'5px'}}>
-               <button onClick={() => registrarFluxo('GOLDEN SCORE')} style={{...btnStyle, flex:1, background: THEME.warning, color:'#000', padding:'12px', fontSize:'13px'}}><Clock size={18}/> GOLDEN SCORE</button>
-               <button onClick={() => registrarFluxo('SOREMADE')} style={{...btnStyle, flex:1, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color:THEME.text, padding:'12px', fontSize:'13px'}}><Flag size={18}/> SOREMADE</button>
-            </div>
-          </div>
-
-          <div style={{...cardStyle, padding:'16px'}}>
-             <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'10px', fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> I=IPPON, W=WAZA, Y=YUKO, N=NADA, S=SHIDO, H=HANSOKU</div>
-             <div style={{display:'flex', gap:'8px'}}><select style={{flex:1, background: THEME.surface, color: THEME.text, border:`1px solid ${THEME.cardBorder}`, padding:'10px', borderRadius:'8px', fontSize: '13px', outline:'none'}} onChange={(e) => setMotivoShido(e.target.value)} value={motivoShido}>{DB_SHIDOS.map(s => <option key={s} value={s}>{s}</option>)}</select><button onClick={() => registrarPunicaoDireto('SHIDO', 'BRANCO')} style={{...btnStyle, width:'48px', background:'#e2e8f0', color:'#0f172a', fontSize:'16px'}}>⚪</button><button onClick={() => registrarPunicaoDireto('SHIDO', 'AZUL')} style={{...btnStyle, width:'48px', background: THEME.primary, color:'white', fontSize:'16px'}}>🔵</button></div>
-          </div>
-        </div>
-
-        {/* COLUNA DIREITA */}
-        <div className="no-print" style={{ flex: 2, width: '100%', display:'flex', flexDirection:'column', gap:'20px' }}>
-          
-          {showPlaylist && (
-            <div style={{ ...cardStyle, padding: '12px', maxHeight: '200px', overflowY: 'auto' }}>
-              <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600', textTransform:'uppercase'}}>Fila de Reprodução</div>
-              {playlist.map((item, index) => (
-                <div key={index} onClick={() => selecionarVideo(index)} style={{ padding: '10px', cursor: 'pointer', background: index === currentVideoIndex ? `${THEME.primary}22` : 'transparent', borderRadius: '6px', marginBottom: '4px', display:'flex', justifyContent:'space-between', alignItems:'center', border: index===currentVideoIndex ? `1px solid ${THEME.primary}66` : '1px solid transparent' }}>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>{item.type === 'YOUTUBE' ? <Video size={14} color={THEME.danger}/> : <Film size={14} color={THEME.primary}/>}<span style={{fontSize:'13px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color: index===currentVideoIndex ? THEME.primary : THEME.text}}>{item.name}</span></div>
-                  <button onClick={(e) => removerDaPlaylist(index, e)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><X size={14}/></button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* PLACAR */}
-          <div style={{ ...cardStyle, padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.text}}>⚪ BRANCO</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.branco.ippon}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.branco.waza}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.branco.yuko}</div></div><div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.branco.shido}</div></div></div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><div style={{fontSize: '10px', color: tempoDisplay.isGS ? THEME.warning : THEME.textDim, fontWeight: '700', letterSpacing:'1px'}}>{tempoDisplay.text}</div><div style={{fontSize: '32px', fontFamily: 'monospace', fontWeight: '700', color: tempoDisplay.isGS ? THEME.warning : 'white', letterSpacing:'-1px'}}>{tempoDisplay.time}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: `1px solid ${THEME.cardBorder}` }}><div style={{fontSize: '14px', fontWeight: '700', color: THEME.primary}}>🔵 AZUL</div><div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>I</div><div style={{fontSize:'24px', fontWeight:'700'}}>{placar.azul.ippon}</div></div>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.warning}}>W</div><div style={{fontSize:'24px', fontWeight:'700', color: THEME.warning}}>{placar.azul.waza}</div></div>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.textDim}}>Y</div><div style={{fontSize:'24px', color: THEME.textDim}}>{placar.azul.yuko}</div></div>
-                <div style={{textAlign:'center'}}><div style={{fontSize:'9px', color: THEME.danger}}>S</div><div style={{fontSize:'24px', color: THEME.danger}}>{placar.azul.shido}</div></div>
-            </div></div>
-          </div>
-
-          {/* DASHBOARD RADAR DE ATAQUE */}
-          <div style={{ ...cardStyle, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-               <div style={{fontSize:'12px', color: THEME.textDim, fontWeight:'600', display:'flex', alignItems:'center', gap:'6px'}}><Compass size={16}/> RADAR DE ATAQUE (BRANCO vs AZUL)</div>
-            </div>
-            
-            <div style={{display:'flex', justifyContent:'space-around', alignItems:'center', padding:'10px'}}>
-               <div style={{textAlign:'center'}}>
-                   <div style={{fontSize:'10px', fontWeight:'700', color:THEME.textDim, marginBottom:'5px'}}>⚪ BRANCO</div>
-                   <div style={{display:'grid', gridTemplateColumns:'30px 30px 30px', gridTemplateRows:'30px 30px 30px', gap:'2px'}}>
-                       <div></div><div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.white.FRENTE)}}><ArrowUp size={20} color="white"/></div><div></div>
-                       <div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.white.ESQUERDA)}}><ArrowLeft size={20} color="white"/></div>
-                       <div style={{background: '#e2e8f0', borderRadius:'50%'}}></div>
-                       <div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.white.DIREITA)}}><ArrowRight size={20} color="white"/></div>
-                       <div></div><div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.white.TRAS)}}><ArrowDown size={20} color="white"/></div><div></div>
-                   </div>
-               </div>
-               <div style={{width:'1px', background:THEME.cardBorder, height:'100px'}}></div>
-               <div style={{textAlign:'center'}}>
-                   <div style={{fontSize:'10px', fontWeight:'700', color:THEME.primary, marginBottom:'5px'}}>🔵 AZUL</div>
-                   <div style={{display:'grid', gridTemplateColumns:'30px 30px 30px', gridTemplateRows:'30px 30px 30px', gap:'2px'}}>
-                       <div></div><div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.blue.FRENTE)}}><ArrowUp size={20} color={THEME.primary}/></div><div></div>
-                       <div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.blue.ESQUERDA)}}><ArrowLeft size={20} color={THEME.primary}/></div>
-                       <div style={{background: THEME.primary, borderRadius:'50%'}}></div>
-                       <div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.blue.DIREITA)}}><ArrowRight size={20} color={THEME.primary}/></div>
-                       <div></div><div style={{display:'flex', alignItems:'center', justifyContent:'center', opacity: Math.max(0.2, radarStats.blue.TRAS)}}><ArrowDown size={20} color={THEME.primary}/></div><div></div>
-                   </div>
-               </div>
-            </div>
-          </div>
-
-          {/* DASHBOARD HEATMAP */}
-          <div style={{ ...cardStyle, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-             <div style={{fontSize:'12px', color: THEME.textDim, fontWeight:'600', display:'flex', alignItems:'center', gap:'6px'}}><MapPin size={16}/> MAPA DE CALOR (TATAME)</div>
-             <div style={{width:'100%', height:'200px', background: THEME.tatamiCenter, border: `8px solid ${THEME.tatamiDanger}`, position:'relative', margin:'0 auto'}}>
-                {eventos.filter((e:any) => e.videoId===currentVideo.name && e.coordenadas).map((e:any) => (
-                    <div key={e.id} style={{
-                        position:'absolute', 
-                        top:`${e.coordenadas.y}%`, 
-                        left:`${e.coordenadas.x}%`, 
-                        width:'10px', height:'10px', 
-                        background: e.atleta==='BRANCO' ? 'white' : THEME.primary, 
-                        borderRadius:'50%', 
-                        transform:'translate(-50%, -50%)', 
-                        border:'1px solid black',
-                        opacity: 0.8
-                    }} title={`${e.especifico} (${e.atleta})`}></div>
-                ))}
-                <div style={{position:'absolute', top:'50%', left:'0', width:'100%', height:'1px', background:'rgba(0,0,0,0.1)'}}></div>
-                <div style={{position:'absolute', top:'0', left:'50%', width:'1px', height:'100%', background:'rgba(0,0,0,0.1)'}}></div>
-             </div>
-             <div style={{display:'flex', justifyContent:'center', gap:'15px', fontSize:'10px', color: THEME.textDim}}>
-                <span style={{display:'flex', alignItems:'center', gap:'4px'}}><div style={{width:'8px', height:'8px', background:'white', borderRadius:'50%', border:'1px solid black'}}></div> BRANCO</span>
-                <span style={{display:'flex', alignItems:'center', gap:'4px'}}><div style={{width:'8px', height:'8px', background:THEME.primary, borderRadius:'50%', border:'1px solid black'}}></div> AZUL</span>
-             </div>
-          </div>
-
-          {/* DASHBOARD MOMENTUM */}
-          <div style={{ ...cardStyle, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{fontSize:'12px', color: THEME.textDim, fontWeight:'600', display:'flex', alignItems:'center', gap:'6px'}}><Activity size={16}/> MOMENTUM DA LUTA (Fluxo)</div>
-            <div style={{display:'flex', alignItems:'flex-end', height:'60px', gap:'4px', justifyContent:'space-around'}}>
-                {momentumData.map((m: any) => (
-                    <div key={m.min} style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:'2px'}}>
-                        <div style={{width:'8px', background: 'white', height: `${Math.min(40, m.branco * 10)}px`, borderRadius:'2px'}}></div>
-                        <div style={{width:'100%', height:'1px', background: THEME.cardBorder}}></div>
-                        <div style={{width:'8px', background: THEME.primary, height: `${Math.min(40, m.azul * 10)}px`, borderRadius:'2px'}}></div>
-                    </div>
-                ))}
-            </div>
-            <div style={{display:'flex', justifyContent:'space-between', fontSize:'9px', color: THEME.textDim}}>
-                <span>0'</span><span>Tempo de Luta</span><span>{momentumData.length}'</span>
-            </div>
-          </div>
-
-          {/* DASHBOARD CLASSICO */}
-          <div style={{ ...cardStyle, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{fontSize:'12px', color: THEME.textDim, fontWeight:'600', display:'flex', alignItems:'center', gap:'6px'}}><BarChart2 size={16}/> PERFORMANCE</div>
-            <div style={{display:'flex', flexDirection:'column', gap:'6px'}}>
-              <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color: THEME.textDim}}><span>⚪ {stats.vol.branco}</span><span>🔵 {stats.vol.azul}</span></div>
-              <div style={{display:'flex', height:'8px', borderRadius:'4px', overflow:'hidden', background: THEME.surface}}><div style={{width: `${(stats.vol.branco / (stats.vol.branco + stats.vol.azul || 1)) * 100}%`, background: 'white'}}></div><div style={{flex:1, background: THEME.primary}}></div></div>
-            </div>
-            <div style={{display:'flex', gap:'20px', alignItems:'center'}}>
-              <SimpleDonut data={stats.groupData}/>
-              <div style={{flex:1, display:'flex', flexDirection:'column', gap:'4px'}}>{stats.groupData.slice(0,4).map((g:any) => (<div key={g.name} style={{display:'flex', alignItems:'center', gap:'6px', fontSize:'11px'}}><div style={{width:'8px', height:'8px', borderRadius:'50%', background:g.color}}></div><span style={{color:THEME.text, flex:1}}>{g.name}</span><span style={{color:THEME.textDim}}>{g.val}</span></div>))}</div>
-            </div>
-          </div>
-
-          {/* LOG COM ACTION PLAYER */}
-          <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom:'10px' }}>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                 <h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600', display:'flex', gap:'6px'}}><List size={16}/> TIMELINE</h3>
-                 <button onClick={playlistMode ? pararPlaylistPlayer : iniciarPlaylistPlayer} style={{...btnStyle, background: playlistMode ? THEME.danger : THEME.success, color:'white', padding:'4px 8px', fontSize:'11px'}}>
-                    {playlistMode ? <><X size={14}/> PARAR</> : <><PlayCircle size={14}/> ASSISTIR CLIPES</>}
-                 </button>
-              </div>
-              <div style={{display:'flex', gap:'5px', overflowX:'auto'}}>
-                  <button onClick={()=>setActiveFilter('TODOS')} style={{...btnStyle, padding:'4px 8px', fontSize:'10px', background: activeFilter==='TODOS'?THEME.text:THEME.cardBorder, color:activeFilter==='TODOS'?'black':THEME.text}}>TODOS</button>
-                  <button onClick={()=>setActiveFilter('PONTOS')} style={{...btnStyle, padding:'4px 8px', fontSize:'10px', background: activeFilter==='PONTOS'?THEME.warning:THEME.cardBorder, color:activeFilter==='PONTOS'?'black':THEME.text}}>PONTOS</button>
-                  <button onClick={()=>setActiveFilter('PUNICAO')} style={{...btnStyle, padding:'4px 8px', fontSize:'10px', background: activeFilter==='PUNICAO'?THEME.danger:THEME.cardBorder, color:activeFilter==='PUNICAO'?'white':THEME.text}}>SHIDO</button>
-                  <button onClick={()=>setActiveFilter('NE-WAZA')} style={{...btnStyle, flex:1, padding:'4px', fontSize:'10px', background: activeFilter==='NE-WAZA'?THEME.newaza:THEME.cardBorder, color:activeFilter==='NE-WAZA'?'white':THEME.text}}>NE-WAZA</button>
-                  <button onClick={()=>setActiveFilter('BRANCO')} style={{...btnStyle, flex:1, padding:'4px', fontSize:'10px', background: activeFilter==='BRANCO'?'white':THEME.cardBorder, color:activeFilter==='BRANCO'?'black':THEME.text}}>BRANCO</button>
-                  <button onClick={()=>setActiveFilter('AZUL')} style={{...btnStyle, flex:1, padding:'4px', fontSize:'10px', background: activeFilter==='AZUL'?THEME.primary:THEME.cardBorder, color:activeFilter==='AZUL'?'white':THEME.text}}>AZUL</button>
-              </div>
-            </div>
-
-            <div style={{ ...cardStyle, flex:1, padding: '8px', minHeight: '300px', overflowY: 'auto', background: THEME.surface }}>
-              {filteredEventos.map((ev: any) => (
-                <div key={ev.id} style={{ 
-                  padding: '10px 12px', marginBottom: '6px', borderRadius: '8px', 
-                  background: playlistMode && playlistQueue[playlistQueueIndex]?.id === ev.id ? `${THEME.success}33` : THEME.card, 
-                  borderLeft: `4px solid ${ev.corTecnica || getCorBorda(ev)}`, 
-                  display:'flex', alignItems:'center', justifyContent:'space-between', fontSize: '13px', border: `1px solid ${THEME.cardBorder}`
-                }}>
-                  <div onClick={() => irParaEvento(ev)} style={{cursor:'pointer', flex:1}}>
-                    <div style={{display:'flex', gap:'8px', fontSize:'11px', color: THEME.textDim, alignItems:'center', marginBottom:'4px'}}>
-                      <span style={{fontFamily:'monospace', display:'flex', alignItems:'center', gap:'4px'}}><Rewind size={10}/> {formatTimeVideo(ev.tempo)}</span>
-                      <span style={{color: THEME.warning, fontWeight:'700', background:`${THEME.warning}22`, padding:'1px 5px', borderRadius:'3px'}}>
-                        {ev.tempo >= fightStartTime ? formatTimeVideo(ev.tempo - fightStartTime) : '-'}
-                      </span>
-                    </div>
-                    <div style={{fontWeight:'600', color: ev.atleta === 'AZUL' ? THEME.primary : (ev.categoria==='FLUXO' ? THEME.textDim : 'white'), fontSize: '14px'}}>
-                      {ev.categoria === 'ANALISE' && <span style={{marginRight:'5px'}}>🖌️</span>}
-                      {ev.categoria === 'KUMI-KATA' && <span style={{marginRight:'5px'}}>✋</span>}
-                      {ev.categoria === 'NE-WAZA' && <span style={{marginRight:'5px'}}>🤼</span>}
-                      {ev.especifico || ev.tipo}
-                      {ev.direcao && <span style={{marginLeft:'5px', fontSize:'10px', background: THEME.surface, padding:'2px 4px', borderRadius:'3px'}}>{ev.direcao === 'FRENTE' ? '⬆️' : ev.direcao === 'TRAS' ? '⬇️' : ev.direcao === 'ESQUERDA' ? '⬅️' : '➡️'}</span>}
-                    </div>
-                    {ev.resultado && ev.resultado !== 'NADA' && <div style={{marginTop:'4px', background: ev.resultado==='IPPON'?'white':THEME.warning, color: 'black', display:'inline-block', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'800'}}>{ev.resultado}</div>}
-                  </div>
-                  <div style={{display:'flex', gap:'5px'}}>
-                    {ev.categoria === 'ANALISE' ? (
-                       <button onClick={() => irParaEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Eye size={14}/></button>
-                    ) : (
-                       <button onClick={() => editarEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Edit2 size={14}/></button>
-                    )}
-                    <button onClick={() => setEventos(eventos.filter((e:any) => e.id !== ev.id))} style={{background:'none', border:'none', color: THEME.cardBorder, cursor:'pointer'}}><X size={14}/></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </div>
     </div>
   );
 }
