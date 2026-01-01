@@ -6,7 +6,7 @@ import {
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
   PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
-  FileJson, UploadCloud, Printer, SkipBack, SkipForward
+  FileJson, UploadCloud, Printer, SkipBack, SkipForward, Hand
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -17,6 +17,7 @@ const THEME = {
 
 // --- BANCO DE DADOS ---
 const DB_SHIDOS = ["Passividade", "Falso Ataque", "Saída de Área", "Postura Defensiva", "Evitar Pegada", "Pegada Ilegal", "Dedos na manga", "Desarrumar Gi", "Outros"];
+const DB_PEGADAS = ["Gola", "Manga", "Gola Alta", "Costas", "Faixa", "Pistola", "Cruzada", "Sem Pegada"];
 const DB_GOLPES: Record<string, string> = {
   "seoi-nage": "TE-WAZA", "ippon-seoi-nage": "TE-WAZA", "seoi-otoshi": "TE-WAZA", "tai-otoshi": "TE-WAZA", "kata-guruma": "TE-WAZA", "sukui-nage": "TE-WAZA", "obi-otoshi": "TE-WAZA", "uki-otoshi": "TE-WAZA", "sumi-otoshi": "TE-WAZA", "yama-arashi": "TE-WAZA", "obi-tori-gaeshi": "TE-WAZA", "morote-gari": "TE-WAZA", "kuchiki-taoshi": "TE-WAZA", "kibisu-gaeshi": "TE-WAZA", "uchi-mata-sukashi": "TE-WAZA", "kouchi-gaeshi": "TE-WAZA",
   "uki-goshi": "KOSHI-WAZA", "ō-goshi": "KOSHI-WAZA", "koshi-guruma": "KOSHI-WAZA", "tsurikomi-goshi": "KOSHI-WAZA", "sode-tsurikomi-goshi": "KOSHI-WAZA", "harai-goshi": "KOSHI-WAZA", "tsuri-goshi": "KOSHI-WAZA", "hane-goshi": "KOSHI-WAZA", "utsuri-goshi": "KOSHI-WAZA", "ushiro-goshi": "KOSHI-WAZA",
@@ -27,11 +28,7 @@ const DB_GOLPES: Record<string, string> = {
   "ude-garami": "KANSETSU-WAZA", "ude-hishigi-jūji-gatame": "KANSETSU-WAZA", "ude-hishigi-ude-gatame": "KANSETSU-WAZA", "ude-hishigi-hiza-gatame": "KANSETSU-WAZA", "ude-hishigi-waki-gatame": "KANSETSU-WAZA", "ude-hishigi-hara-gatame": "KANSETSU-WAZA", "ude-hishigi-ashi-gatame": "KANSETSU-WAZA", "ude-hishigi-te-gatame": "KANSETSU-WAZA", "ude-hishigi-sankaku-gatame": "KANSETSU-WAZA", "ashi-garami": "KANSETSU-WAZA"
 };
 
-const CORES_GRUPOS: any = { 
-  "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", 
-  "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", 
-  "KANSETSU-WAZA": "#ec4899" 
-};
+const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI-WAZA": "#f59e0b", "SUTEMI-WAZA": "#ef4444", "OSAEKOMI-WAZA": "#3b82f6", "SHIME-WAZA": "#a855f7", "KANSETSU-WAZA": "#ec4899" };
 
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 type LoopRange = { start: number; end: number } | null;
@@ -76,7 +73,14 @@ export default function JudoPlayer() {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // --- DATA ENTRY STATE ---
+  // --- KUMI-KATA STATE (v19.1) ---
+  const [modalKumi, setModalKumi] = useState(false);
+  const [kumiAtleta, setKumiAtleta] = useState('BRANCO'); // NOVO: Quem está pegando
+  const [kumiBase, setKumiBase] = useState('Ai-yotsu');
+  const [kumiDir, setKumiDir] = useState('Gola');
+  const [kumiEsq, setKumiEsq] = useState('Manga');
+
+  // --- DADOS REGISTRO ---
   const [modalAtleta, setModalAtleta] = useState('BRANCO');
   const [modalLado, setModalLado] = useState('DIREITA');
   const [modalNome, setModalNome] = useState('');
@@ -90,9 +94,9 @@ export default function JudoPlayer() {
 
   // --- DATABASE ---
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v18_4') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v19_1') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v18_4', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v19_1', JSON.stringify(eventos)); }, [eventos]);
 
   // ==================================================================================
   // 1. CÁLCULOS (MEMO)
@@ -109,8 +113,7 @@ export default function JudoPlayer() {
     let total = 0; let start = null;
     const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => a.tempo - b.tempo);
     for (const ev of evs) {
-      if (ev.tipo === 'HAJIME') start = ev.tempo;
-      else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) { total += (ev.tempo - start); start = null; }
+      if (ev.tipo === 'HAJIME') start = ev.tempo; else if ((ev.tipo === 'MATE' || ev.tipo === 'SOREMADE') && start !== null) { total += (ev.tempo - start); start = null; }
     }
     if (start !== null && currentTime > start) total += (currentTime - start);
     return total;
@@ -153,344 +156,82 @@ export default function JudoPlayer() {
     return { groupData, vol, eff };
   }, [eventos, currentVideo.name]);
 
-  // ==================================================================================
-  // 2. FUNÇÕES DE SUPORTE
-  // ==================================================================================
+  // --- FUNÇÕES ---
+  const formatTimeVideo = (s: number) => `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
   
-  const formatTimeVideo = (s: number) => {
-    return `${Math.floor(Math.abs(s)/60)}:${Math.floor(Math.abs(s)%60).toString().padStart(2,'0')}`;
+  const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
+  const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
+  
+  // -- KUMI-KATA ACTIONS --
+  const abrirKumiKata = () => {
+     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
+     setTempoCapturado(currentTime);
+     setKumiAtleta('BRANCO'); // Reset
+     setModalKumi(true);
+  };
+  const salvarKumiKata = () => {
+     const detalhe = `${kumiBase} (D:${kumiDir} / E:${kumiEsq})`;
+     const dados = { 
+        id: Date.now(), 
+        videoId: currentVideo.name, 
+        tempo: tempoCapturado, 
+        categoria: 'KUMI-KATA', 
+        tipo: 'PEGADA', 
+        especifico: detalhe, 
+        atleta: kumiAtleta, // Agora salva quem pegou
+        lado: '-', 
+        corTecnica: kumiAtleta === 'AZUL' ? THEME.primary : '#ffffff' // Cor baseada no atleta
+     };
+     setEventos((prev:any) => [dados, ...prev]);
+     setModalKumi(false);
+     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.playVideo(); else filePlayerRef.current?.play();
   };
 
-  const registrarFluxo = (tipo: string) => {
-    setEventos((prev: any[]) => [{ 
-      id: Date.now(), 
-      videoId: currentVideo.name, 
-      tempo: currentTime, 
-      categoria: 'FLUXO', 
-      tipo, 
-      atleta: '-', 
-      lado: '-', 
-      corTecnica: THEME.neutral 
-    }, ...prev]);
-  };
-
-  const registrarPunicaoDireto = (tipo: string, atleta: string) => {
-    setEventos((prev: any[]) => [{ 
-      id: Date.now(), 
-      videoId: currentVideo.name, 
-      tempo: currentTime, 
-      categoria: 'PUNICAO', 
-      tipo, 
-      especifico: motivoShido, 
-      atleta, 
-      lado: '-', 
-      corTecnica: THEME.warning 
-    }, ...prev]);
-  };
-
-  const toggleFightState = () => {
-    if (isFightActive) registrarFluxo('MATE');
-    else registrarFluxo('HAJIME');
-  };
-
-  // --- PRECISION CONTROLS ---
-  const stepFrame = (frames: number) => {
-    const frameTime = 0.05; 
-    const newTime = currentTime + (frames * frameTime);
-    if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) {
-        youtubePlayerRef.current.seekTo(newTime, true);
-    } else if (filePlayerRef.current) {
-        filePlayerRef.current.currentTime = newTime;
-    }
-    setCurrentTime(newTime);
-  };
-
-  const setLoopPoint = (point: 'A' | 'B') => {
-    setLoopRange(prev => {
-        if (point === 'A') return { start: currentTime, end: prev?.end || currentTime + 5 };
-        if (point === 'B') return { start: prev?.start || Math.max(0, currentTime - 5), end: currentTime };
-        return prev;
-    });
-  };
-
+  const toggleFightState = () => { if (isFightActive) registrarFluxo('MATE'); else registrarFluxo('HAJIME'); };
+  
+  const stepFrame = (frames: number) => { const frameTime = 0.05; const newTime = currentTime + (frames * frameTime); if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) { youtubePlayerRef.current.seekTo(newTime, true); } else if (filePlayerRef.current) { filePlayerRef.current.currentTime = newTime; } setCurrentTime(newTime); };
+  const setLoopPoint = (point: 'A' | 'B') => { setLoopRange(prev => { if (point === 'A') return { start: currentTime, end: prev?.end || currentTime + 5 }; if (point === 'B') return { start: prev?.start || Math.max(0, currentTime - 5), end: currentTime }; return prev; }); };
   const clearLoop = () => setLoopRange(null);
 
-  // --- VIDEO CONTROLS ---
-  const toggleVideo = () => { 
-    if (currentVideo.type === 'YOUTUBE') isPlaying ? youtubePlayerRef.current?.pauseVideo() : youtubePlayerRef.current?.playVideo(); 
-    else isPlaying ? filePlayerRef.current?.pause() : filePlayerRef.current?.play(); 
-  };
-
+  const toggleVideo = () => { if (currentVideo.type === 'YOUTUBE') isPlaying ? youtubePlayerRef.current?.pauseVideo() : youtubePlayerRef.current?.playVideo(); else isPlaying ? filePlayerRef.current?.pause() : filePlayerRef.current?.play(); };
   const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
   const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
   const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
   const removerDaPlaylist = (index: number, e: any) => { e.stopPropagation(); const nova = playlist.filter((_,i)=>i!==index); if(nova.length) setPlaylist(nova); if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); };
-  
-  const mudarVelocidade = (rate?: number) => { 
-    const r = [0.25, 0.5, 1.0, 1.5, 2.0]; 
-    const n = rate || r[(r.indexOf(playbackRate)+1)%r.length]; 
-    setPlaybackRate(n); 
-    if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); 
-    else filePlayerRef.current.playbackRate = n; 
-  };
+  const mudarVelocidade = (rate?: number) => { const r = [0.25, 0.5, 1.0, 1.5, 2.0]; const n = rate || r[(r.indexOf(playbackRate)+1)%r.length]; setPlaybackRate(n); if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); else filePlayerRef.current.playbackRate = n; };
+  const handleFileSelect = (e: any) => { const files = Array.from(e.target.files || []); const newItems: PlaylistItem[] = files.map((file: any) => ({ id: URL.createObjectURL(file), type: 'FILE', name: file.name })); if (playlist.length === 1 && playlist[0].id === 'kU_gjfnyu6A') { setPlaylist(newItems); setCurrentVideoIndex(0); } else { setPlaylist([...playlist, ...newItems]); } setShowPlaylist(true); };
+  const adicionarYoutube = () => { const link = prompt("Cole o Link do YouTube:"); if (link) { const id = link.includes('v=') ? link.split('v=')[1].split('&')[0] : link.split('/').pop() || link; setPlaylist([...playlist, { id, type: 'YOUTUBE', name: `YouTube: ${id}` }]); setShowPlaylist(true); } };
 
-  const handleFileSelect = (e: any) => {
-    const files = Array.from(e.target.files || []);
-    const newItems: PlaylistItem[] = files.map((file: any) => ({ id: URL.createObjectURL(file), type: 'FILE', name: file.name }));
-    if (playlist.length === 1 && playlist[0].id === 'kU_gjfnyu6A') { setPlaylist(newItems); setCurrentVideoIndex(0); } else { setPlaylist([...playlist, ...newItems]); }
-    setShowPlaylist(true);
-  };
+  const salvarEFechar = (dados: any) => { if (editingEventId) setEventos(eventos.map((ev: any) => ev.id === editingEventId ? { ...ev, ...dados } : ev)); else setEventos([{ id: Date.now(), ...dados }, ...eventos]); setModalAberto(false); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play(); };
+  const confirmarEContinuar = (resultado: string) => { const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'TECNICA', grupo: modalGrupo, especifico: modalNome || "Técnica Geral", atleta: modalAtleta, lado: modalLado, corTecnica: CORES_GRUPOS[modalGrupo], resultado: resultado }; salvarEFechar(dados); };
+  const confirmarPunicao = (atleta: string) => { const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'PUNICAO', tipo: punicaoMode, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }; salvarEFechar(dados); };
+  const iniciarRegistroRapido = (resultadoInicial?: string) => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); let t = currentTime; if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime; setEditingEventId(null); setTempoCapturado(t); setModalAtleta('BRANCO'); setModalNome(''); setPunicaoMode(null); setResultadoPreSelecionado(resultadoInicial || null); setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100); };
+  const iniciarRegistroPunicaoTeclado = (tipo: 'SHIDO' | 'HANSOKU') => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); let t = currentTime; if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime; setEditingEventId(null); setTempoCapturado(t); setPunicaoMode(tipo); setModalAberto(true); };
+  const editarEvento = (ev: any) => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause(); setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); if (ev.categoria === 'PUNICAO') { setPunicaoMode(ev.tipo); setMotivoShido(ev.especifico); } else { setPunicaoMode(null); setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico); setModalGrupo(ev.grupo || 'TE-WAZA'); setResultadoPreSelecionado(ev.resultado); } setModalAberto(true); };
 
-  const adicionarYoutube = () => {
-    const link = prompt("Cole o Link do YouTube:");
-    if (link) {
-      const id = link.includes('v=') ? link.split('v=')[1].split('&')[0] : link.split('/').pop() || link;
-      setPlaylist([...playlist, { id, type: 'YOUTUBE', name: `YouTube: ${id}` }]);
-      setShowPlaylist(true);
-    }
-  };
+  const clearCanvas = () => { if (canvasRef.current) { const ctx = canvasRef.current.getContext('2d'); if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); } setCurrentStrokes([]); };
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string) => { const headLength = 20; const angle = Math.atan2(toY - fromY, toX - fromX); ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); ctx.beginPath(); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke(); };
+  const redrawStrokes = (strokesToDraw: any[]) => { if (!canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); strokesToDraw.forEach(stroke => { ctx.strokeStyle = stroke.color; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; if (stroke.tool === 'PEN') { ctx.beginPath(); if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); } ctx.stroke(); } else if (stroke.tool === 'ARROW') { if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color); } } }); };
+  const toggleDrawingMode = (loadStrokes?: any[]) => { const newState = !isDrawingMode; setIsDrawingMode(newState); if (newState) { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); if (playerContainerRef.current) { if (playerContainerRef.current.requestFullscreen) { playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); } else { setIsDataFullscreen(true); } } setTimeout(() => { if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (loadStrokes && loadStrokes.length > 0) { setCurrentStrokes(loadStrokes); redrawStrokes(loadStrokes); } } }, 100); } else { if (document.fullscreenElement) document.exitFullscreen(); setIsDataFullscreen(false); clearCanvas(); } };
+  const salvarDesenhoNoLog = () => { if (currentStrokes.length === 0) { alert("Desenhe algo antes de salvar!"); return; } setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'ANALISE', tipo: 'DESENHO', especifico: 'Anotação Tática Visual', atleta: '-', lado: '-', corTecnica: '#a855f7', vetores: currentStrokes }, ...prev]); alert("Anotação Visual Catalogada!"); toggleDrawingMode(); };
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawingMode || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; setIsDrawing(true); setTempPoints([{x, y}]); if (drawTool === 'PEN') { ctx.beginPath(); ctx.moveTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; } else if (drawTool === 'ARROW') { setStartPos({x, y}); setSnapshot(ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)); } };
+  const draw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); setTempPoints(prev => [...prev, {x, y}]); } else if (drawTool === 'ARROW' && startPos) { if (snapshot) ctx.putImageData(snapshot, 0, 0); drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor); } };
+  const stopDrawing = (e: any) => { e.preventDefault(); if (!isDrawing || !canvasRef.current) return; setIsDrawing(false); const rect = canvasRef.current.getBoundingClientRect(); let finalX = 0, finalY = 0; if (e.type !== 'mouseleave') { const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX; const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY; finalX = clientX - rect.left; finalY = clientY - rect.top; } if (drawTool === 'PEN') { setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, points: tempPoints }]); } else if (drawTool === 'ARROW' && startPos) { setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, points: [{x: startPos.x, y: startPos.y}, {x: finalX, y: finalY}] }]); } setSnapshot(null); setStartPos(null); setTempPoints([]); };
 
-  const salvarEFechar = (dados: any) => {
-    if (editingEventId) setEventos(eventos.map((ev: any) => ev.id === editingEventId ? { ...ev, ...dados } : ev));
-    else setEventos([{ id: Date.now(), ...dados }, ...eventos]);
-    setModalAberto(false);
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
-  };
+  const irPara = (t: number) => { const st = Math.max(0, t - 2); if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } setCurrentTime(st); };
+  const irParaEvento = (ev: any) => { if (ev.categoria === 'ANALISE' && ev.vetores) { const st = ev.tempo; if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.pauseVideo(); } else { filePlayerRef.current.currentTime = st; filePlayerRef.current.pause(); } setCurrentTime(st); if (!isDrawingMode) toggleDrawingMode(ev.vetores); else redrawStrokes(ev.vetores); } else { const st = Math.max(0, ev.tempo - 3); if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } setCurrentTime(st); } };
 
-  const confirmarEContinuar = (resultado: string) => {
-    const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'TECNICA', grupo: modalGrupo, especifico: modalNome || "Técnica Geral", atleta: modalAtleta, lado: modalLado, corTecnica: CORES_GRUPOS[modalGrupo], resultado: resultado };
-    salvarEFechar(dados);
-  };
-
-  const confirmarPunicao = (atleta: string) => {
-    const dados = { videoId: currentVideo.name, tempo: tempoCapturado, categoria: 'PUNICAO', tipo: punicaoMode, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning };
-    salvarEFechar(dados);
-  };
-
-  const iniciarRegistroRapido = (resultadoInicial?: string) => {
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
-    let t = currentTime;
-    if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
-    setEditingEventId(null); setTempoCapturado(t); setModalAtleta('BRANCO'); setModalNome(''); setPunicaoMode(null);
-    setResultadoPreSelecionado(resultadoInicial || null);
-    setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100);
-  };
-
-  const iniciarRegistroPunicaoTeclado = (tipo: 'SHIDO' | 'HANSOKU') => {
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
-    let t = currentTime;
-    if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
-    setEditingEventId(null); setTempoCapturado(t); setPunicaoMode(tipo); setModalAberto(true);
-  };
-
-  const editarEvento = (ev: any) => {
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause();
-    setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); 
-    if (ev.categoria === 'PUNICAO') { setPunicaoMode(ev.tipo); setMotivoShido(ev.especifico); } 
-    else { setPunicaoMode(null); setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico); setModalGrupo(ev.grupo || 'TE-WAZA'); setResultadoPreSelecionado(ev.resultado); }
-    setModalAberto(true);
-  };
-
-  // --- FUNÇÕES DE DESENHO (CORRIGIDAS COM PREVENT DEFAULT) ---
-  const clearCanvas = () => {
-    if (canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    }
-    setCurrentStrokes([]);
-  };
-
-  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string) => {
-    const headLength = 20; 
-    const angle = Math.atan2(toY - fromY, toX - fromX);
-    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke();
-  };
-
-  const redrawStrokes = (strokesToDraw: any[]) => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    strokesToDraw.forEach(stroke => {
-        ctx.strokeStyle = stroke.color; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        if (stroke.tool === 'PEN') {
-            ctx.beginPath();
-            if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); }
-            ctx.stroke();
-        } else if (stroke.tool === 'ARROW') {
-            if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color); }
-        }
-    });
-  };
-
-  const toggleDrawingMode = (loadStrokes?: any[]) => {
-    const newState = !isDrawingMode;
-    setIsDrawingMode(newState);
-    if (newState) {
-      if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
-      if (playerContainerRef.current) { if (playerContainerRef.current.requestFullscreen) { playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); } else { setIsDataFullscreen(true); } }
-      setTimeout(() => {
-        if(canvasRef.current && canvasRef.current.parentElement) {
-          canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight;
-          if (loadStrokes && loadStrokes.length > 0) { setCurrentStrokes(loadStrokes); redrawStrokes(loadStrokes); }
-        }
-      }, 100);
-    } else {
-      if (document.fullscreenElement) document.exitFullscreen(); setIsDataFullscreen(false); clearCanvas();
-    }
-  };
-
-  const salvarDesenhoNoLog = () => {
-    if (currentStrokes.length === 0) { alert("Desenhe algo antes de salvar!"); return; }
-    setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'ANALISE', tipo: 'DESENHO', especifico: 'Anotação Tática Visual', atleta: '-', lado: '-', corTecnica: '#a855f7', vetores: currentStrokes }, ...prev]);
-    alert("Anotação Visual Catalogada!");
-    toggleDrawingMode();
-  };
-
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault(); 
-    e.stopPropagation();
-    
-    if (!isDrawingMode || !canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
-    const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY;
-    const x = clientX - rect.left; const y = clientY - rect.top;
-    
-    setIsDrawing(true); setTempPoints([{x, y}]);
-    
-    if (drawTool === 'PEN') { 
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; 
-    } else if (drawTool === 'ARROW') { 
-        setStartPos({x, y}); 
-        setSnapshot(ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)); 
-    }
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault(); 
-    e.stopPropagation();
-
-    if (!isDrawing || !canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
-    const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY;
-    const x = clientX - rect.left; const y = clientY - rect.top;
-    
-    if (drawTool === 'PEN') { 
-        ctx.lineTo(x, y); ctx.stroke(); setTempPoints(prev => [...prev, {x, y}]); 
-    } else if (drawTool === 'ARROW' && startPos) { 
-        if (snapshot) ctx.putImageData(snapshot, 0, 0); 
-        drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor); 
-    }
-  };
-
-  const stopDrawing = (e: any) => {
-    e.preventDefault(); 
-    if (!isDrawing || !canvasRef.current) return;
-    setIsDrawing(false);
-    const rect = canvasRef.current.getBoundingClientRect();
-    let finalX = 0, finalY = 0;
-    
-    if (e.type !== 'mouseleave') {
-         const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
-         const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY;
-         finalX = clientX - rect.left; finalY = clientY - rect.top;
-    }
-    
-    if (drawTool === 'PEN') { 
-        setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, points: tempPoints }]); 
-    } else if (drawTool === 'ARROW' && startPos) { 
-        setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, points: [{x: startPos.x, y: startPos.y}, {x: finalX, y: finalY}] }]); 
-    }
-    setSnapshot(null); setStartPos(null); setTempPoints([]);
-  };
-
-  const irPara = (t: number) => { 
-    const st = Math.max(0, t - 2); 
-    if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } 
-    else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } 
-    setCurrentTime(st); 
-  };
-  
-  const irParaEvento = (ev: any) => { 
-    if (ev.categoria === 'ANALISE' && ev.vetores) {
-        const st = ev.tempo;
-        if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.pauseVideo(); } 
-        else { filePlayerRef.current.currentTime = st; filePlayerRef.current.pause(); } 
-        setCurrentTime(st);
-        if (!isDrawingMode) toggleDrawingMode(ev.vetores);
-        else redrawStrokes(ev.vetores);
-    } else {
-        const st = Math.max(0, ev.tempo - 3); 
-        if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } 
-        else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } 
-        setCurrentTime(st);
-    }
-  };
-
-  const baixarCSV = () => {
-    let csv = "data:text/csv;charset=utf-8,Video;Tempo Video;Tempo Luta;Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n";
-    const evsByVid: any = {};
-    eventos.forEach((ev:any) => { if(!evsByVid[ev.videoId]) evsByVid[ev.videoId]=[]; evsByVid[ev.videoId].push(ev); });
-    Object.keys(evsByVid).forEach(vid => {
-        const sorted = evsByVid[vid].sort((a:any,b:any)=>a.tempo-b.tempo);
-        const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
-        sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
-    });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v18_3_${new Date().toISOString().slice(0,10)}.csv`; link.click();
-  };
-
-  const exportarBackup = () => {
-    const dadosBackup = { version: '18.3', timestamp: new Date().toISOString(), playlist, eventos };
-    const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  };
-  
-  const importarBackup = (e: any) => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.eventos && Array.isArray(json.eventos)) {
-          if (confirm("ATENÇÃO: Isso substituirá todos os dados atuais. Deseja continuar?")) {
-            setEventos(json.eventos); if (json.playlist) { setPlaylist(json.playlist); setCurrentVideoIndex(0); }
-            alert("Backup restaurado! 🥋");
-          }
-        } else alert("Arquivo inválido.");
-      } catch (err) { alert("Erro ao ler JSON."); }
-    };
-    reader.readAsText(file); e.target.value = null;
-  };
-  
+  const baixarCSV = () => { let csv = "data:text/csv;charset=utf-8,Video;Tempo Video;Tempo Luta;Categoria;Técnica;Resultado;Atleta;Lado;Detalhe\n"; const evsByVid: any = {}; eventos.forEach((ev:any) => { if(!evsByVid[ev.videoId]) evsByVid[ev.videoId]=[]; evsByVid[ev.videoId].push(ev); }); Object.keys(evsByVid).forEach(vid => { const sorted = evsByVid[vid].sort((a:any,b:any)=>a.tempo-b.tempo); const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0; sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; }); }); const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v19_${new Date().toISOString().slice(0,10)}.csv`; link.click(); };
+  const exportarBackup = () => { const dadosBackup = { version: '19.1', timestamp: new Date().toISOString(), playlist, eventos }; const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+  const importarBackup = (e: any) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const json = JSON.parse(event.target?.result as string); if (json.eventos && Array.isArray(json.eventos)) { if (confirm("ATENÇÃO: Isso substituirá todos os dados atuais. Deseja continuar?")) { setEventos(json.eventos); if (json.playlist) { setPlaylist(json.playlist); setCurrentVideoIndex(0); } alert("Backup restaurado! 🥋"); } } else alert("Arquivo inválido."); } catch (err) { alert("Erro ao ler JSON."); } }; reader.readAsText(file); e.target.value = null; };
   const imprimirRelatorio = () => { setReportMode(true); setTimeout(() => { window.print(); }, 500); };
-  
-  const gerarPromptIA = () => {
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
-    const evs = eventos.filter((e:any) => e.videoId === currentVideo.name);
-    const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', ');
-    const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    const desenhos = evs.filter((e:any) => e.categoria === 'ANALISE').map((e:any) => formatTimeVideo(e.tempo)).join(', ');
-    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}. ATENÇÃO: O técnico marcou observações visuais (desenhos) nos seguintes momentos: ${desenhos || 'Nenhum'}. Verifique o que ocorreu nesses tempos. Identifique o Tokui-waza e sugira correções táticas.`;
-    setGeneratedPrompt(prompt); setCopied(false); setModalIA(true);
-  };
+  const gerarPromptIA = () => { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); const evs = eventos.filter((e:any) => e.videoId === currentVideo.name); const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', '); const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', '); const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', '); const desenhos = evs.filter((e:any) => e.categoria === 'ANALISE').map((e:any) => formatTimeVideo(e.tempo)).join(', '); const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}. ATENÇÃO: O técnico marcou observações visuais (desenhos) nos seguintes momentos: ${desenhos || 'Nenhum'}. Verifique o que ocorreu nesses tempos. Identifique o Tokui-waza e sugira correções táticas.`; setGeneratedPrompt(prompt); setCopied(false); setModalIA(true); };
   const copyToClipboard = () => { navigator.clipboard.writeText(generatedPrompt); setCopied(true); };
 
-  // ==================================================================================
-  // 3. EFEITOS (HOOKS)
-  // ==================================================================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (modalIA || reportMode) return;
-      if (modalAberto) { if (e.key === 'Escape') setModalAberto(false); if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA'); return; }
+      if (modalAberto || modalKumi) { if (e.key === 'Escape') { setModalAberto(false); setModalKumi(false); } if (e.key === 'Enter' && !punicaoMode && modalAberto) confirmarEContinuar(resultadoPreSelecionado || 'NADA'); return; }
       if (document.activeElement?.tagName === 'INPUT') return;
       switch(e.code) {
         case 'Space': e.preventDefault(); toggleFightState(); break; 
@@ -507,71 +248,30 @@ export default function JudoPlayer() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive, reportMode]);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive, reportMode, modalKumi]);
 
-  useEffect(() => {
-    const handleResize = () => { setIsMobile(window.innerWidth < 800); if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (currentStrokes.length > 0) redrawStrokes(currentStrokes); } };
-    window.addEventListener('resize', handleResize);
-    const handleFsChange = () => { if (!document.fullscreenElement && isDrawingMode) { setTimeout(handleResize, 100); } };
-    document.addEventListener('fullscreenchange', handleFsChange);
-    return () => { window.removeEventListener('resize', handleResize); document.removeEventListener('fullscreenchange', handleFsChange); }
-  }, [isDrawingMode, currentStrokes]);
-
+  useEffect(() => { const handleResize = () => { setIsMobile(window.innerWidth < 800); if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (currentStrokes.length > 0) redrawStrokes(currentStrokes); } }; window.addEventListener('resize', handleResize); const handleFsChange = () => { if (!document.fullscreenElement && isDrawingMode) { setTimeout(handleResize, 100); } }; document.addEventListener('fullscreenchange', handleFsChange); return () => { window.removeEventListener('resize', handleResize); document.removeEventListener('fullscreenchange', handleFsChange); } }, [isDrawingMode, currentStrokes]);
   const onReady = (e: any) => { youtubePlayerRef.current = e.target; setDuration(e.target.getDuration()); };
   const onStateChange = (e: any) => { setIsPlaying(e.data === 1); if (e.data === 0) proximoVideo(); window.focus(); };
   const onFileEnded = () => proximoVideo();
-
-  useEffect(() => {
-    let af: number;
-    const loop = () => {
-      if (isPlaying) {
-        if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current?.getCurrentTime) setCurrentTime(youtubePlayerRef.current.getCurrentTime());
-        else if (currentVideo.type === 'FILE' && filePlayerRef.current) setCurrentTime(filePlayerRef.current.currentTime);
-        af = requestAnimationFrame(loop);
-      }
-      if (loopRange && isPlaying) {
-          if (currentTime >= loopRange.end) {
-              if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(loopRange.start, true);
-              else if (filePlayerRef.current) filePlayerRef.current.currentTime = loopRange.start;
-          }
-      }
-    };
-    if (isPlaying) loop();
-    return () => cancelAnimationFrame(af);
-  }, [isPlaying, currentVideo.type, loopRange, currentTime]);
-
+  useEffect(() => { let af: number; const loop = () => { if (isPlaying) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current?.getCurrentTime) setCurrentTime(youtubePlayerRef.current.getCurrentTime()); else if (currentVideo.type === 'FILE' && filePlayerRef.current) setCurrentTime(filePlayerRef.current.currentTime); af = requestAnimationFrame(loop); } if (loopRange && isPlaying) { if (currentTime >= loopRange.end) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(loopRange.start, true); else if (filePlayerRef.current) filePlayerRef.current.currentTime = loopRange.start; } } }; if (isPlaying) loop(); return () => cancelAnimationFrame(af); }, [isPlaying, currentVideo.type, loopRange, currentTime]);
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
-  const SimpleDonut = ({ data }: { data: any[] }) => {
-    let cumPct = 0; if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>;
-    return <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: `conic-gradient(${data.map(d => { const str = `${d.color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`}}><div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div></div>;
-  };
-
+  const SimpleDonut = ({ data }: { data: any[] }) => { let cumPct = 0; if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>; return <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: `conic-gradient(${data.map(d => { const str = `${d.color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`}}><div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div></div>; };
   const cardStyle: any = { background: THEME.card, border: `1px solid ${THEME.cardBorder}`, borderRadius: '16px', overflow: 'hidden' };
   const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' };
 
-  // ==================================================================================
-  // 4. RENDERIZAÇÃO
-  // ==================================================================================
   return (
     <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
       
       {/* CSS IMPRESSÃO */}
-      <style>{`
-        @media print {
-          @page { size: A4; margin: 10mm; }
-          body { background: white !important; color: black !important; }
-          .no-print { display: none !important; }
-          .printable-report { display: block !important; position: static !important; width: 100% !important; height: auto !important; background: white !important; color: black !important; padding: 0 !important; overflow: visible !important; }
-          .printable-card { border: 1px solid #ccc !important; background: white !important; color: black !important; box-shadow: none !important; page-break-inside: avoid; margin-bottom: 20px; }
-        }
-      `}</style>
+      <style>{` @media print { @page { size: A4; margin: 10mm; } body { background: white !important; color: black !important; } .no-print { display: none !important; } .printable-report { display: block !important; position: static !important; width: 100% !important; height: auto !important; background: white !important; color: black !important; padding: 0 !important; overflow: visible !important; } .printable-card { border: 1px solid #ccc !important; background: white !important; color: black !important; box-shadow: none !important; page-break-inside: avoid; margin-bottom: 20px; } } `}</style>
 
       {/* HEADER */}
       <div className="no-print" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v18.4</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v19.1 Split</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -591,11 +291,54 @@ export default function JudoPlayer() {
           <button onClick={imprimirRelatorio} style={{...btnStyle, background: 'white', color:'black', padding:'8px 12px', fontSize: '13px', border:'none', fontWeight:'700'}}><Printer size={16}/> RELATÓRIO</button>
           <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'8px 12px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)'}}><Bot size={16}/> AI</button>
           <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
-          <button onClick={baixarCSV} style={{...btnStyle, background: THEME.success, color:'white', padding:'8px 16px', fontSize: '13px'}}><Download size={16}/> CSV</button>
         </div>
       </div>
 
-      {/* --- MODO RELATÓRIO --- */}
+      {/* --- MODAL KUMI-KATA --- */}
+      {modalKumi && (
+        <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ ...cardStyle, width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', border: `1px solid ${THEME.cardBorder}` }}>
+            
+            {/* NOVO SELETOR DE ATLETA */}
+            <div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`, marginBottom:'20px'}}>
+               <button onClick={() => setKumiAtleta('BRANCO')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: kumiAtleta==='BRANCO'?'#e2e8f0':THEME.surface, color:kumiAtleta==='BRANCO'?'#0f172a':THEME.textDim}}>⚪ BRANCO</button>
+               <button onClick={() => setKumiAtleta('AZUL')} style={{...btnStyle, flex:1, borderRadius:0, padding:'12px', background: kumiAtleta==='AZUL'?THEME.primary:THEME.surface, color:kumiAtleta==='AZUL'?'white':THEME.textDim}}>🔵 AZUL</button>
+            </div>
+
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+              <h2 style={{margin:0, color: '#f59e0b', fontSize:'18px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Hand size={20}/> REGISTRAR PEGADA</h2>
+              <button onClick={() => setModalKumi(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'6px', borderRadius:'50%'}}><X size={18}/></button>
+            </div>
+            
+            <div style={{marginBottom:'20px'}}>
+               <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>TIPO DE BASE</div>
+               <div style={{display:'flex', borderRadius:'8px', overflow:'hidden', border:`1px solid ${THEME.cardBorder}`}}>
+                  <button onClick={() => setKumiBase('Ai-yotsu')} style={{...btnStyle, flex:1, padding:'12px', borderRadius:0, background: kumiBase==='Ai-yotsu' ? THEME.primary : 'transparent', color: kumiBase==='Ai-yotsu' ? 'white' : THEME.textDim}}>AI-YOTSU (RvR)</button>
+                  <button onClick={() => setKumiBase('Kenka-yotsu')} style={{...btnStyle, flex:1, padding:'12px', borderRadius:0, background: kumiBase==='Kenka-yotsu' ? THEME.danger : 'transparent', color: kumiBase==='Kenka-yotsu' ? 'white' : THEME.textDim}}>KENKA (RvL)</button>
+               </div>
+            </div>
+
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px', marginBottom:'24px'}}>
+               <div>
+                  <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>MÃO DIREITA</div>
+                  <select value={kumiDir} onChange={(e) => setKumiDir(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
+                     {DB_PEGADAS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+               </div>
+               <div>
+                  <div style={{fontSize:'11px', color: THEME.textDim, marginBottom:'8px', fontWeight:'600'}}>MÃO ESQUERDA</div>
+                  <select value={kumiEsq} onChange={(e) => setKumiEsq(e.target.value)} style={{width:'100%', background: THEME.surface, color: 'white', padding:'10px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`}}>
+                     {DB_PEGADAS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+               </div>
+            </div>
+
+            <button onClick={salvarKumiKata} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.success, color:'white', fontSize:'16px', fontWeight:'700'}}>CONFIRMAR PEGADA</button>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODO RELATÓRIO (OVERLAY) --- */}
       {reportMode && (
         <div className="printable-report" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'white', zIndex: 99999, padding: '40px', overflowY: 'auto', color:'black' }}>
           <div className="no-print" style={{position:'fixed', top:'20px', right:'20px', display:'flex', gap:'10px'}}>
@@ -766,9 +509,14 @@ export default function JudoPlayer() {
              </div>
           </div>
 
-          <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, width:'100%', padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`, marginBottom:'24px'}}>
-            <CheckCircle size={28}/> MARCAR AÇÃO
-          </button>
+          <div style={{display: 'flex', gap: '12px', marginBottom: '24px'}}>
+             <button onClick={() => iniciarRegistroRapido()} style={{...btnStyle, flex: 2, padding:'24px', background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryHover} 100%)`, color:'white', fontSize:'18px', boxShadow: `0 10px 20px -5px ${THEME.primary}66`}}>
+               <CheckCircle size={28}/> WAZA
+             </button>
+             <button onClick={abrirKumiKata} style={{...btnStyle, flex: 1, padding:'24px', background: THEME.card, border: `1px solid ${THEME.cardBorder}`, color: '#f59e0b', fontSize:'16px'}}>
+               <Hand size={24}/> KUMI-KATA
+             </button>
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
             <button onClick={toggleFightState} style={{...btnStyle, background: isFightActive ? THEME.danger : THEME.success, color:'white', padding:'16px'}}>
@@ -830,7 +578,7 @@ export default function JudoPlayer() {
           <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
               <div style={{display:'flex', alignItems:'center', gap:'8px'}}><h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3><Keyboard size={12} color={THEME.textDim}/></div>
-              <button onClick={()=>setEventos(eventos.filter(e => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
+              <button onClick={()=>setEventos(eventos.filter((e:any) => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
             </div>
             <div style={{ ...cardStyle, flex:1, padding: '8px', minHeight: '200px', overflowY: 'auto', background: THEME.surface }}>
               {eventos.filter(e => e.videoId === currentVideo.name).map((ev: any) => (
@@ -848,6 +596,7 @@ export default function JudoPlayer() {
                     </div>
                     <div style={{fontWeight:'600', color: ev.atleta === 'AZUL' ? THEME.primary : (ev.categoria==='FLUXO' ? THEME.textDim : 'white'), fontSize: '14px'}}>
                       {ev.categoria === 'ANALISE' && <span style={{marginRight:'5px'}}>🖌️</span>}
+                      {ev.categoria === 'KUMI-KATA' && <span style={{marginRight:'5px'}}>✋</span>}
                       {ev.especifico || ev.tipo}
                     </div>
                     {ev.resultado && ev.resultado !== 'NADA' && <div style={{marginTop:'4px', background: ev.resultado==='IPPON'?'white':THEME.warning, color: 'black', display:'inline-block', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'800'}}>{ev.resultado}</div>}
