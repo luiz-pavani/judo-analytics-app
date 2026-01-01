@@ -6,7 +6,7 @@ import {
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
   PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, Eye,
-  FileJson, UploadCloud, Printer, SkipBack, SkipForward, Repeat, Zap, Layers
+  FileJson, UploadCloud, Printer, SkipBack, SkipForward // Novos ícones de playlist
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -58,9 +58,9 @@ export default function JudoPlayer() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
   const [isDataFullscreen, setIsDataFullscreen] = useState(false); 
 
-  // --- PRECISION STATE (NOVO v18) ---
-  const [loopRange, setLoopRange] = useState<LoopRange>(null); // Ponto A e B
-  
+  // --- PRECISION ---
+  const [loopRange, setLoopRange] = useState<LoopRange>(null);
+
   // --- DRAWING STATE ---
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawTool, setDrawTool] = useState<'PEN' | 'ARROW'>('PEN');
@@ -92,9 +92,9 @@ export default function JudoPlayer() {
 
   // --- DATABASE ---
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v18') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v18_1') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v18', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v18_1', JSON.stringify(eventos)); }, [eventos]);
 
   // ==================================================================================
   // 1. CÁLCULOS (MEMO)
@@ -165,12 +165,29 @@ export default function JudoPlayer() {
 
   const registrarFluxo = (tipo: string) => {
     setEventos((prev: any[]) => [{ 
-      id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
+      id: Date.now(), 
+      videoId: currentVideo.name, 
+      tempo: currentTime, 
+      categoria: 'FLUXO', 
+      tipo, 
+      atleta: '-', 
+      lado: '-', 
+      corTecnica: THEME.neutral 
+    }, ...prev]);
   };
 
   const registrarPunicaoDireto = (tipo: string, atleta: string) => {
     setEventos((prev: any[]) => [{ 
-      id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
+      id: Date.now(), 
+      videoId: currentVideo.name, 
+      tempo: currentTime, 
+      categoria: 'PUNICAO', 
+      tipo, 
+      especifico: motivoShido, 
+      atleta, 
+      lado: '-', 
+      corTecnica: THEME.warning 
+    }, ...prev]);
   };
 
   const toggleFightState = () => {
@@ -178,7 +195,7 @@ export default function JudoPlayer() {
     else registrarFluxo('HAJIME');
   };
 
-  // --- PRECISION CONTROLS (NOVO v18) ---
+  // --- PRECISION CONTROLS (V18) ---
   const stepFrame = (frames: number) => {
     const frameTime = 0.05; // ~20-30fps
     const newTime = currentTime + (frames * frameTime);
@@ -208,8 +225,11 @@ export default function JudoPlayer() {
   };
 
   const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
+  
   const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
+  
   const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
+  
   const removerDaPlaylist = (index: number, e: any) => { 
     e.stopPropagation(); 
     const nova = playlist.filter((_,i)=>i!==index); 
@@ -275,14 +295,14 @@ export default function JudoPlayer() {
   };
 
   const editarEvento = (ev: any) => {
-    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
+    if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.pauseVideo(); else filePlayerRef.current.pause();
     setEditingEventId(ev.id); setTempoCapturado(ev.tempo); setModalAtleta(ev.atleta); setModalLado(ev.lado); 
     if (ev.categoria === 'PUNICAO') { setPunicaoMode(ev.tipo); setMotivoShido(ev.especifico); } 
     else { setPunicaoMode(null); setModalNome(ev.especifico === "Técnica Geral" ? "" : ev.especifico); setModalGrupo(ev.grupo || 'TE-WAZA'); setResultadoPreSelecionado(ev.resultado); }
     setModalAberto(true);
   };
 
-  // --- FUNÇÕES DE DESENHO (CORRIGIDAS) ---
+  // --- FUNÇÕES DE DESENHO ---
   const clearCanvas = () => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
@@ -427,14 +447,14 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v17_2_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v18_1_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
 
   const exportarBackup = () => {
-    const dadosBackup = { version: '17.2', timestamp: new Date().toISOString(), playlist, eventos };
+    const dadosBackup = { version: '18.1', timestamp: new Date().toISOString(), playlist, eventos };
     const blob = new Blob([JSON.stringify(dadosBackup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a"); link.href = url; link.download = `smaartpro_${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    const link = document.createElement("a"); link.href = url; link.download = `smaartpro_backup.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
   
   const importarBackup = (e: any) => {
@@ -513,7 +533,7 @@ export default function JudoPlayer() {
         else if (currentVideo.type === 'FILE' && filePlayerRef.current) setCurrentTime(filePlayerRef.current.currentTime);
         af = requestAnimationFrame(loop);
       }
-      // LOOP CHECK FOR V18 (PRECISION)
+      // LOOP CHECK
       if (loopRange && isPlaying) {
           if (currentTime >= loopRange.end) {
               if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(loopRange.start, true);
@@ -535,7 +555,7 @@ export default function JudoPlayer() {
   const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' };
 
   // ==================================================================================
-  // 4. RENDERIZAÇÃO
+  // 4. RENDERIZAÇÃO (JSX)
   // ==================================================================================
   return (
     <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
@@ -556,7 +576,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v18.0 Precision</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v18.1</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -587,7 +607,6 @@ export default function JudoPlayer() {
              <button onClick={() => window.print()} style={{...btnStyle, background:'black', color:'white', padding:'10px 20px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}><Printer size={18}/> IMPRIMIR / PDF</button>
              <button onClick={() => setReportMode(false)} style={{...btnStyle, background:'#e2e8f0', color:'black', padding:'10px', borderRadius:'50%'}}><X size={20}/></button>
           </div>
-          {/* CONTEUDO DO RELATORIO (OMITIDO PARA BREVIDADE, MAS ESTA LA NA VERSAO COMPLETA) */}
           <div style={{borderBottom:'2px solid black', paddingBottom:'20px', marginBottom:'30px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
              <div><h1 style={{margin:0, fontSize:'28px', fontWeight:'800', letterSpacing:'-1px'}}>SMAART<span style={{color:'#3b82f6'}}>PRO</span> REPORT</h1><div style={{fontSize:'14px', color:'#666', marginTop:'5px'}}>Análise Tática e Biomecânica de Judô</div></div>
              <div style={{textAlign:'right'}}><div style={{fontSize:'18px', fontWeight:'700'}}>{currentVideo.name}</div><div style={{fontSize:'14px', color:'#666'}}>{new Date().toLocaleDateString()}</div></div>
@@ -705,27 +724,25 @@ export default function JudoPlayer() {
                )}
           </div>
 
-          {/* BARRA DE CONTROLE (NOVA v18 - PRECISION DECK) */}
+          {/* BARRA DE CONTROLE (PRECISION DECK) */}
           <div style={{...cardStyle, padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', borderTop: `4px solid ${THEME.primary}`}}>
              
-             {/* LADO ESQUERDO: VIDEO NAV */}
+             {/* ESQUERDA: VIDEO NAV */}
              <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                <button onClick={videoAnterior} disabled={currentVideoIndex===0} style={{...btnStyle, background:'transparent', color:currentVideoIndex===0?THEME.cardBorder:THEME.textDim}}><ChevronLeft size={18}/></button>
+                <button onClick={videoAnterior} disabled={currentVideoIndex===0} style={{...btnStyle, background:'transparent', color:currentVideoIndex===0?THEME.cardBorder:THEME.textDim}}><SkipBack size={18}/></button>
                 
-                {/* FRAME STEP BACK */}
-                <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, padding:'8px'}} title="-1 Frame (0.05s)"><ArrowUpRight size={14} style={{transform:'rotate(225deg)'}}/></button>
-                
-                <button onClick={toggleVideo} style={{...btnStyle, background: THEME.primary, color:'white', width:'40px', height:'40px', borderRadius:'50%', boxShadow: `0 0 15px ${THEME.primary}66`}}>
-                    {isPlaying ? <Pause size={20} fill="white"/> : <Play size={20} fill="white" style={{marginLeft:'2px'}}/>}
-                </button>
-                
-                {/* FRAME STEP FWD */}
-                <button onClick={() => stepFrame(1)} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, padding:'8px'}} title="+1 Frame (0.05s)"><ArrowUpRight size={14} style={{transform:'rotate(45deg)'}}/></button>
+                <div style={{display:'flex', alignItems:'center', background: THEME.surface, padding:'4px', borderRadius:'20px', border:`1px solid ${THEME.cardBorder}`, gap:'4px'}}>
+                  <button onClick={() => stepFrame(-1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="-0.05s"><ChevronLeft size={18}/></button>
+                  <button onClick={toggleVideo} style={{...btnStyle, background: THEME.primary, color:'white', width:'36px', height:'36px', borderRadius:'50%', boxShadow: `0 0 10px ${THEME.primary}66`}}>
+                      {isPlaying ? <Pause size={18} fill="white"/> : <Play size={18} fill="white" style={{marginLeft:'2px'}}/>}
+                  </button>
+                  <button onClick={() => stepFrame(1)} style={{...btnStyle, background: 'transparent', color: THEME.textDim, padding:'8px'}} title="+0.05s"><ChevronRight size={18}/></button>
+                </div>
 
-                <button onClick={proximoVideo} disabled={currentVideoIndex===playlist.length-1} style={{...btnStyle, background:'transparent', color:currentVideoIndex===playlist.length-1?THEME.cardBorder:THEME.textDim}}><ChevronRight size={18}/></button>
+                <button onClick={proximoVideo} disabled={currentVideoIndex===playlist.length-1} style={{...btnStyle, background:'transparent', color:currentVideoIndex===playlist.length-1?THEME.cardBorder:THEME.textDim}}><SkipForward size={18}/></button>
              </div>
 
-             {/* CENTRO: LOOP CONTROLS */}
+             {/* CENTRO: LOOP */}
              <div style={{display:'flex', gap:'8px', background: THEME.surface, padding:'4px 8px', borderRadius:'8px', border: `1px solid ${loopRange ? THEME.warning : THEME.cardBorder}`}}>
                 <button onClick={() => setLoopPoint('A')} style={{...btnStyle, color: loopRange?.start ? THEME.warning : THEME.textDim, fontSize:'10px'}}>A</button>
                 <span style={{color:THEME.cardBorder}}>|</span>
@@ -733,7 +750,7 @@ export default function JudoPlayer() {
                 {loopRange && <button onClick={clearLoop} style={{...btnStyle, color: THEME.danger}}><X size={12}/></button>}
              </div>
 
-             {/* DIREITA: FERRAMENTAS */}
+             {/* DIREITA: TOOLS */}
              <div style={{display:'flex', gap:'8px'}}>
                 <button onClick={() => toggleDrawingMode()} style={{...btnStyle, background: isDrawingMode ? THEME.primary : 'transparent', color: isDrawingMode ? 'white' : THEME.textDim}}><PenTool size={16}/></button>
                 <div style={{width:'1px', background: THEME.cardBorder, height:'20px', alignSelf:'center'}}></div>
