@@ -5,7 +5,7 @@ import {
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
   MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
   Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon,
-  PenTool, ArrowUpRight, Eraser, Palette 
+  PenTool, ArrowUpRight, Eraser, Palette, Maximize, Save, ScanEye
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -32,8 +32,8 @@ const CORES_GRUPOS: any = { "TE-WAZA": "#6366f1", "KOSHI-WAZA": "#10b981", "ASHI
 type PlaylistItem = { id: string; type: 'YOUTUBE' | 'FILE'; name: string; };
 
 export default function JudoPlayer() {
-  // REFS
   const mainContainerRef = useRef<HTMLDivElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null); // Ref especifica para o player
   const youtubePlayerRef = useRef<any>(null);
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
@@ -50,6 +50,7 @@ export default function JudoPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
+  const [isDataFullscreen, setIsDataFullscreen] = useState(false); // Estado de Fullscreen
 
   // STATE: DRAWING (TELESTRATOR)
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -80,9 +81,9 @@ export default function JudoPlayer() {
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v14_2') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v15') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v14_2', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v15', JSON.stringify(eventos)); }, [eventos]);
 
   // --- CÁLCULOS CRÍTICOS (HOISTED) ---
   const currentVideo = useMemo(() => playlist[currentVideoIndex] || { id: '', type: 'YOUTUBE', name: '' }, [playlist, currentVideoIndex]);
@@ -110,7 +111,6 @@ export default function JudoPlayer() {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
     let t = currentTime;
     if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
-    
     setEditingEventId(null); setTempoCapturado(t); setModalAtleta('BRANCO'); setModalNome(''); setPunicaoMode(null);
     setResultadoPreSelecionado(resultadoInicial || null);
     setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100);
@@ -135,7 +135,7 @@ export default function JudoPlayer() {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
   };
 
-  // --- DRAWING LOGIC ---
+  // --- DRAWING LOGIC (CATALOGAÇÃO) ---
   const clearCanvas = () => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
@@ -143,23 +143,57 @@ export default function JudoPlayer() {
     }
   };
 
+  const salvarDesenhoNoLog = () => {
+    // Registra que houve uma análise visual neste momento
+    setEventos((prev: any[]) => [{ 
+      id: Date.now(), 
+      videoId: currentVideo.name, 
+      tempo: currentTime, 
+      categoria: 'ANALISE', 
+      tipo: 'DESENHO', 
+      especifico: 'Anotação Tática Visual', 
+      atleta: '-', 
+      lado: '-', 
+      corTecnica: '#a855f7' // Roxo para análise
+    }, ...prev]);
+    
+    // Opcional: Feedback visual de salvo
+    alert("Anotação Visual Catalogada!");
+    toggleDrawingMode(); // Sai do modo desenho
+  };
+
   const toggleDrawingMode = () => {
     const newState = !isDrawingMode;
     setIsDrawingMode(newState);
+    
     if (newState) {
+      // Pausa
       if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); 
       else filePlayerRef.current?.pause();
       
-      setTimeout(() => {
-        if(canvasRef.current) {
-          const parent = canvasRef.current.parentElement;
-          if(parent) {
-            canvasRef.current.width = parent.clientWidth;
-            canvasRef.current.height = parent.clientHeight;
-          }
+      // Tenta entrar em Fullscreen no container do player para fugir das propagandas
+      if (playerContainerRef.current) {
+        if (playerContainerRef.current.requestFullscreen) {
+          playerContainerRef.current.requestFullscreen().catch(err => {
+             console.log("Fullscreen negado (interação requerida)");
+             // Fallback: Modo CSS Maximize
+             setIsDataFullscreen(true);
+          });
+        } else {
+           setIsDataFullscreen(true);
         }
-      }, 50);
+      }
+
+      setTimeout(() => {
+        if(canvasRef.current && canvasRef.current.parentElement) {
+          canvasRef.current.width = canvasRef.current.parentElement.clientWidth;
+          canvasRef.current.height = canvasRef.current.parentElement.clientHeight;
+        }
+      }, 100);
     } else {
+      // Sai do Fullscreen ao fechar desenho
+      if (document.fullscreenElement) document.exitFullscreen();
+      setIsDataFullscreen(false);
       clearCanvas();
     }
   };
@@ -203,28 +237,22 @@ export default function JudoPlayer() {
 
   useEffect(() => {
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const handleFileSelect = (e: any) => {
-    const files = Array.from(e.target.files);
-    const newItems: PlaylistItem[] = files.map((file: any) => ({ id: URL.createObjectURL(file), type: 'FILE', name: file.name }));
-    if (playlist.length === 1 && playlist[0].id === 'kU_gjfnyu6A') { setPlaylist(newItems); setCurrentVideoIndex(0); } else { setPlaylist([...playlist, ...newItems]); }
-    setShowPlaylist(true);
-  };
-  const adicionarYoutube = () => {
-    const link = prompt("Cole o Link do YouTube:");
-    if (link) {
-      const id = link.includes('v=') ? link.split('v=')[1].split('&')[0] : link.split('/').pop() || link;
-      setPlaylist([...playlist, { id, type: 'YOUTUBE', name: `YouTube: ${id}` }]);
-      setShowPlaylist(true);
+    // Listener para sair do modo desenho se o usuário apertar ESC no fullscreen
+    const handleFsChange = () => {
+        if (!document.fullscreenElement && isDrawingMode) {
+            // Se saiu do fullscreen manualmente, podemos manter o desenho ou sair?
+            // Melhor manter, mas atualizar canvas
+            setTimeout(handleResize, 100);
+        }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        document.removeEventListener('fullscreenchange', handleFsChange);
     }
-  };
-  const selecionarVideo = (index: number) => { setCurrentVideoIndex(index); setIsPlaying(true); };
-  const proximoVideo = () => { if (currentVideoIndex < playlist.length - 1) selecionarVideo(currentVideoIndex + 1); };
-  const videoAnterior = () => { if (currentVideoIndex > 0) selecionarVideo(currentVideoIndex - 1); };
-  const removerDaPlaylist = (index: number, e: any) => { e.stopPropagation(); const nova = playlist.filter((_,i)=>i!==index); if(nova.length) setPlaylist(nova); if(index<=currentVideoIndex && currentVideoIndex>0) setCurrentVideoIndex(currentVideoIndex-1); };
+  }, [isDrawingMode]);
 
+  // ... (Video Handlers remain same)
   const onReady = (e: any) => { youtubePlayerRef.current = e.target; setDuration(e.target.getDuration()); };
   const onStateChange = (e: any) => { 
     setIsPlaying(e.data === 1); 
@@ -360,7 +388,13 @@ export default function JudoPlayer() {
     const tecnicasBranco = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
     const tecnicasAzul = evs.filter((e:any) => e.categoria === 'TECNICA' && e.atleta === 'AZUL').map((e:any) => e.especifico).join(', ');
     const shidosBranco = evs.filter((e:any) => e.categoria === 'PUNICAO' && e.atleta === 'BRANCO').map((e:any) => e.especifico).join(', ');
-    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Identifique o Tokui-waza e sugira correções táticas.`;
+    // INCLUI DESENHOS NO PROMPT
+    const desenhos = evs.filter((e:any) => e.categoria === 'ANALISE').map((e:any) => formatTimeVideo(e.tempo)).join(', ');
+    
+    const prompt = `Analise a luta de Judô: ${currentVideo.name}. Tempo: ${formatTimeVideo(accumulatedFightTime)}. BRANCO: I${placar.branco.ippon} W${placar.branco.waza} S${placar.branco.shido} (${stats.eff.branco}% efic). AZUL: I${placar.azul.ippon} W${placar.azul.waza} S${placar.azul.shido} (${stats.eff.azul}% efic). Golpes Branco: ${tecnicasBranco}. Golpes Azul: ${tecnicasAzul}. Punições Branco: ${shidosBranco}.
+    
+    ATENÇÃO: O técnico marcou observações visuais (desenhos) nos seguintes momentos: ${desenhos || 'Nenhum'}. Verifique o que ocorreu nesses tempos. Identifique o Tokui-waza e sugira correções táticas.`;
+    
     setGeneratedPrompt(prompt); setCopied(false); setModalIA(true);
   };
   const copyToClipboard = () => { navigator.clipboard.writeText(generatedPrompt); setCopied(true); };
@@ -384,7 +418,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v14_2_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v15_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -403,7 +437,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v14.2 NoAds</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v15.0 AI Catalog</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -480,7 +514,8 @@ export default function JudoPlayer() {
         
         {/* COLUNA ESQUERDA */}
         <div style={{ flex: 3, width: '100%' }}>
-          <div style={{ ...cardStyle, position: 'relative', paddingTop: '56.25%', width: '100%', marginBottom: '20px' }}>
+          <div ref={playerContainerRef} style={{ ...cardStyle, position: isDataFullscreen ? 'fixed' : 'relative', top: isDataFullscreen ? 0 : 'auto', left: isDataFullscreen ? 0 : 'auto', width: isDataFullscreen ? '100vw' : '100%', height: isDataFullscreen ? '100vh' : 'auto', paddingTop: isDataFullscreen ? 0 : '56.25%', marginBottom: '20px', zIndex: isDataFullscreen ? 999 : 1 }}>
+               
                {/* CAMADA DE DESENHO (CANVAS) */}
                {isDrawingMode && (
                  <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', zIndex:20, cursor: drawTool==='PEN' ? 'crosshair' : 'default'}}>
@@ -496,6 +531,7 @@ export default function JudoPlayer() {
                      <button onClick={() => setDrawColor('#ffffff')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#ffffff', border: drawColor==='#ffffff'?'2px solid white':'none', cursor:'pointer'}}></button>
                      <div style={{width:'1px', background:'white', opacity:0.2, margin:'0 4px'}}></div>
                      <button onClick={clearCanvas} style={{...btnStyle, background:'transparent', color:THEME.danger, padding:'6px'}}><Eraser size={18}/></button>
+                     <button onClick={salvarDesenhoNoLog} style={{...btnStyle, background:THEME.success, color:'white', padding:'6px'}}><Save size={18}/></button>
                      <button onClick={toggleDrawingMode} style={{...btnStyle, background: THEME.surface, color:'white', padding:'6px'}}><X size={18}/></button>
                    </div>
                  </div>
@@ -504,7 +540,13 @@ export default function JudoPlayer() {
                {/* OVERLAY DE FOCO (SÓ QUANDO NÃO ESTÁ DESENHANDO) */}
                {!isDrawingMode && <div onClick={toggleVideo} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>}
                
-               {currentVideo.type === 'YOUTUBE' ? (<YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, controls: 1, rel: 0, showinfo: 0, ecver: 2, iv_load_policy: 3, modestbranding: 1, playsinline: 1 } }} />) : (<div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>)}
+               {currentVideo.type === 'YOUTUBE' ? (
+                 <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%'}}>
+                    <YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, controls: 1, rel: 0, showinfo: 0, ecver: 2, iv_load_policy: 3, modestbranding: 1, playsinline: 1 } }} style={{width:'100%', height:'100%'}}/>
+                 </div>
+               ) : (
+                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>
+               )}
           </div>
 
           <div style={{...cardStyle, padding:'8px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px'}}>
@@ -589,7 +631,7 @@ export default function JudoPlayer() {
               {eventos.filter(e => e.videoId === currentVideo.name).map((ev: any) => (
                 <div key={ev.id} style={{ 
                   padding: '10px 12px', marginBottom: '6px', borderRadius: '8px', 
-                  background: THEME.card, borderLeft: `4px solid ${getCorBorda(ev)}`, 
+                  background: THEME.card, borderLeft: `4px solid ${ev.corTecnica || getCorBorda(ev)}`, 
                   display:'flex', alignItems:'center', justifyContent:'space-between', fontSize: '13px', border: `1px solid ${THEME.cardBorder}`
                 }}>
                   <div onClick={() => irPara(ev.tempo)} style={{cursor:'pointer', flex:1}}>
@@ -599,11 +641,14 @@ export default function JudoPlayer() {
                         {ev.tempo >= fightStartTime ? formatTimeVideo(ev.tempo - fightStartTime) : '-'}
                       </span>
                     </div>
-                    <div style={{fontWeight:'600', color: ev.atleta === 'AZUL' ? THEME.primary : (ev.categoria==='FLUXO' ? THEME.textDim : 'white'), fontSize: '14px'}}>{ev.especifico || ev.tipo}</div>
+                    <div style={{fontWeight:'600', color: ev.atleta === 'AZUL' ? THEME.primary : (ev.categoria==='FLUXO' ? THEME.textDim : 'white'), fontSize: '14px'}}>
+                      {ev.categoria === 'ANALISE' && <span style={{marginRight:'5px'}}>🖌️</span>}
+                      {ev.especifico || ev.tipo}
+                    </div>
                     {ev.resultado && ev.resultado !== 'NADA' && <div style={{marginTop:'4px', background: ev.resultado==='IPPON'?'white':THEME.warning, color: 'black', display:'inline-block', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'800'}}>{ev.resultado}</div>}
                   </div>
                   <div style={{display:'flex', gap:'5px'}}>
-                    <button onClick={() => editarEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Edit2 size={14}/></button>
+                    {ev.categoria !== 'ANALISE' && <button onClick={() => editarEvento(ev)} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Edit2 size={14}/></button>}
                     <button onClick={() => setEventos(eventos.filter((e:any) => e.id !== ev.id))} style={{background:'none', border:'none', color: THEME.cardBorder, cursor:'pointer'}}><X size={14}/></button>
                   </div>
                 </div>
