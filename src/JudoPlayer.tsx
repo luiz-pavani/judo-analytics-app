@@ -11,7 +11,7 @@ import {
   MapPin, Grid, Activity, Triangle, PlayCircle, Users, UserPlus, MonitorPlay
 } from 'lucide-react';
 
-// --- DESIGN SYSTEM (v27.1) ---
+// --- DESIGN SYSTEM (v27.2) ---
 const THEME = {
   bg: '#020617', // Slate 950
   card: '#1e293b', // Slate 800
@@ -159,7 +159,7 @@ export default function JudoPlayer() {
   const [copied, setCopied] = useState(false);
   const [activeFilter, setActiveFilter] = useState('TODOS');
 
-  // --- STATE: MODALS DATA ---
+  // --- STATE MODALS DATA ---
   const [modalKumi, setModalKumi] = useState(false);
   const [kumiAtleta, setKumiAtleta] = useState('BRANCO');
   const [kumiBase, setKumiBase] = useState('Ai-yotsu');
@@ -260,9 +260,9 @@ export default function JudoPlayer() {
       if (ev.resultado === 'IPPON') q.ippon++; if (ev.resultado === 'WAZA-ARI') q.waza++; if (ev.resultado === 'YUKO') q.yuko++;
       if (ev.categoria === 'PUNICAO') { if (ev.tipo === 'SHIDO') q.shido++; if (ev.tipo === 'HANSOKU') q.shido += 3; }
       if (ev.categoria === 'NE-WAZA') { 
-          if (ev.resultado.includes('ippon') || ev.resultado.includes('Ippon')) q.ippon++;
-          if (ev.resultado.includes('waza-ari')) q.waza++;
-          if (ev.resultado.includes('yuko')) q.yuko++;
+          if (ev.resultado && (ev.resultado.includes('ippon') || ev.resultado.includes('Ippon'))) q.ippon++;
+          if (ev.resultado && ev.resultado.includes('waza-ari')) q.waza++;
+          if (ev.resultado && ev.resultado.includes('yuko')) q.yuko++;
       }
     });
     return p;
@@ -275,7 +275,11 @@ export default function JudoPlayer() {
     evs.forEach((e:any) => { groups[e.grupo] = (groups[e.grupo] || 0) + 1; });
     const groupData = Object.keys(groups).map(g => ({ name: g, val: groups[g], pct: (groups[g]/total)*100, color: CORES_GRUPOS[g] })).sort((a,b)=>b.val-a.val);
     const vol = { branco: evs.filter((e:any)=>e.atleta==='BRANCO').length, azul: evs.filter((e:any)=>e.atleta==='AZUL').length };
-    return { groupData, vol };
+    const eff = {
+        branco: (evs.filter((e:any)=>e.atleta==='BRANCO' && e.resultado !== 'NADA').length / (vol.branco || 1) * 100).toFixed(0),
+        azul: (evs.filter((e:any)=>e.atleta==='AZUL' && e.resultado !== 'NADA').length / (vol.azul || 1) * 100).toFixed(0)
+    };
+    return { groupData, vol, eff };
   }, [eventos, currentVideo.name]);
 
   const radarStats = useMemo(() => {
@@ -364,12 +368,71 @@ export default function JudoPlayer() {
   
   const handleTatamiClick = (e: React.MouseEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; setModalXY({ x, y }); };
   const clearCanvas = () => { if (canvasRef.current) { const ctx = canvasRef.current.getContext('2d'); if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); } setCurrentStrokes([]); };
-  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string) => { const headLength = 20; const angle = Math.atan2(toY - fromY, toX - fromX); ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); ctx.beginPath(); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke(); };
+  
+  // -- BIOMECHANICS MATH (FIXED v27.2) --
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string) => { 
+      const headLength = 20; 
+      const angle = Math.atan2(toY - fromY, toX - fromX); 
+      ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); 
+      ctx.beginPath(); ctx.moveTo(toX, toY); 
+      ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); 
+      ctx.moveTo(toX, toY); 
+      ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6)); 
+      ctx.stroke(); 
+  };
+  
   const calculateAngle = (p1: any, p2: any, p3: any) => { const p12 = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); const p23 = Math.sqrt(Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2)); const p13 = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2)); const radians = Math.acos((p12*p12 + p23*p23 - p13*p13) / (2 * p12 * p23)); return Math.round(radians * 180 / Math.PI); };
-  const redrawStrokes = (strokesToDraw: any[]) => { if (!canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); strokesToDraw.forEach(stroke => { ctx.strokeStyle = stroke.color; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; if (stroke.tool === 'PEN') { ctx.beginPath(); if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); } ctx.stroke(); } else if (stroke.tool === 'ARROW') { if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color); } } else if (stroke.tool === 'ANGLE') { if (stroke.points.length === 3) { const [p1, p2, p3] = stroke.points; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.stroke(); ctx.beginPath(); ctx.arc(p2.x, p2.y, 20, 0, 2 * Math.PI); ctx.stroke(); const angle = calculateAngle(p1, p2, p3); ctx.font = "bold 20px Arial"; ctx.fillStyle = stroke.color; ctx.fillText(`${angle}°`, p2.x + 25, p2.y); } } }); };
+  
+  const redrawStrokes = (strokesToDraw: any[]) => { 
+      if (!canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; 
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); 
+      strokesToDraw.forEach(stroke => { 
+          ctx.strokeStyle = stroke.color; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; 
+          if (stroke.tool === 'PEN') { 
+              ctx.beginPath(); if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); } ctx.stroke(); 
+          } else if (stroke.tool === 'ARROW') { 
+              if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color); } 
+          } else if (stroke.tool === 'ANGLE') {
+              if (stroke.points.length === 3) {
+                  const [p1, p2, p3] = stroke.points;
+                  ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.stroke();
+                  ctx.beginPath(); ctx.arc(p2.x, p2.y, 20, 0, 2 * Math.PI); ctx.stroke();
+                  const angle = calculateAngle(p1, p2, p3);
+                  ctx.font = "bold 20px Arial"; ctx.fillStyle = stroke.color; ctx.fillText(`${angle}°`, p2.x + 25, p2.y);
+              }
+          }
+      }); 
+  };
+
   const toggleDrawingMode = (loadStrokes?: any[]) => { const newState = !isDrawingMode; setIsDrawingMode(newState); if (newState) { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); if (playerContainerRef.current) { if (playerContainerRef.current.requestFullscreen) { playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); } else { setIsDataFullscreen(true); } } setTimeout(() => { if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (loadStrokes && loadStrokes.length > 0) { setCurrentStrokes(loadStrokes); redrawStrokes(loadStrokes); } } }, 100); } else { if (document.fullscreenElement) document.exitFullscreen(); setIsDataFullscreen(false); clearCanvas(); } };
   const salvarDesenhoNoLog = () => { if (currentStrokes.length === 0) { alert("Desenhe algo antes de salvar!"); return; } setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'ANALISE', tipo: 'DESENHO', especifico: 'Anotação Tática Visual', atleta: '-', lado: '-', corTecnica: '#a855f7', vetores: currentStrokes }, ...prev]); alert("Anotação Visual Catalogada!"); toggleDrawingMode(); };
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawingMode || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'ANGLE') { const newPoints = [...tempPoints, {x, y}]; if (newPoints.length < 3) { setTempPoints(newPoints); ctx.fillStyle = drawColor; ctx.beginPath(); ctx.arc(x, y, 5, 0, 2*Math.PI); ctx.fill(); } else { setCurrentStrokes(prev => [...prev, { tool: 'ANGLE', color: drawColor, points: newPoints }]); setTempPoints([]); redrawStrokes([...currentStrokes, { tool: 'ANGLE', color: drawColor, points: newPoints }]); } return; } setIsDrawing(true); setTempPoints([{x, y}]); if (drawTool === 'PEN') { ctx.beginPath(); ctx.moveTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; } else if (drawTool === 'ARROW') { setStartPos({x, y}); setSnapshot(ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)); } };
+  
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => { 
+      e.preventDefault(); e.stopPropagation(); if (!isDrawingMode || !canvasRef.current) return; 
+      const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; 
+      const rect = canvasRef.current.getBoundingClientRect(); 
+      const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; 
+      const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; 
+      const x = clientX - rect.left; const y = clientY - rect.top; 
+      
+      if (drawTool === 'ANGLE') {
+          const newPoints = [...tempPoints, {x, y}];
+          if (newPoints.length < 3) {
+              setTempPoints(newPoints);
+              ctx.fillStyle = drawColor; ctx.beginPath(); ctx.arc(x, y, 5, 0, 2*Math.PI); ctx.fill();
+          } else {
+              setCurrentStrokes(prev => [...prev, { tool: 'ANGLE', color: drawColor, points: newPoints }]);
+              setTempPoints([]);
+              redrawStrokes([...currentStrokes, { tool: 'ANGLE', color: drawColor, points: newPoints }]);
+          }
+          return;
+      }
+
+      setIsDrawing(true); setTempPoints([{x, y}]); 
+      if (drawTool === 'PEN') { ctx.beginPath(); ctx.moveTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; } 
+      else if (drawTool === 'ARROW') { setStartPos({x, y}); setSnapshot(ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)); } 
+  };
+
   const draw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); setTempPoints(prev => [...prev, {x, y}]); } else if (drawTool === 'ARROW' && startPos) { if (snapshot) ctx.putImageData(snapshot, 0, 0); drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor); } };
   const stopDrawing = (e: any) => { e.preventDefault(); if (!isDrawing || !canvasRef.current) return; setIsDrawing(false); const rect = canvasRef.current.getBoundingClientRect(); let finalX = 0, finalY = 0; if (e.type !== 'mouseleave') { const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX; const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY; finalX = clientX - rect.left; finalY = clientY - rect.top; } if (drawTool === 'PEN') { setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, points: tempPoints }]); } else if (drawTool === 'ARROW' && startPos) { setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, points: [{x: startPos.x, y: startPos.y}, {x: finalX, y: finalY}] }]); } setSnapshot(null); setStartPos(null); setTempPoints([]); };
 
@@ -424,7 +487,7 @@ export default function JudoPlayer() {
             <span style={{ color: 'white' }}>SMAART</span><span style={{ color: THEME.primary }}>PRO</span>
             <div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'400', letterSpacing:'2px', marginTop:'-4px'}}>ELITE JUDO ANALYTICS</div>
           </div>
-          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v27.1</span>
+          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v27.2</span>
         </h1>
         
         <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
@@ -447,7 +510,10 @@ export default function JudoPlayer() {
              <input type="file" ref={backupInputRef} style={{display:'none'}} accept=".json" onChange={importarBackup} />
           </div>
 
+          <button onClick={imprimirRelatorio} style={{...btnStyle, background: 'white', color:'black', padding:'8px 12px', fontSize: '13px', border:'none', fontWeight:'700'}}><Printer size={16}/> RELATÓRIO</button>
           <button onClick={gerarPromptIA} style={{...btnStyle, background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color:'white', padding:'10px 16px', fontSize: '13px', border:'none', boxShadow:'0 4px 12px rgba(168, 85, 247, 0.4)', borderRadius:'10px'}}><Bot size={18}/> AI Report</button>
+          <button onClick={() => setShowPlaylist(!showPlaylist)} style={{...btnStyle, background: showPlaylist ? THEME.primary : THEME.card, color: showPlaylist ? 'white' : THEME.textDim, padding:'8px 12px', fontSize: '13px', border:`1px solid ${showPlaylist ? THEME.primary : THEME.cardBorder}`}}><List size={16}/> {playlist.length}</button>
+          <button onClick={baixarCSV} style={{...btnStyle, background: THEME.success, color:'white', padding:'8px 16px', fontSize: '13px'}}><Download size={16}/> CSV</button>
         </div>
       </div>
 
@@ -704,6 +770,7 @@ export default function JudoPlayer() {
                <h2 style={{margin:0, color: 'white', fontSize:'18px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}><Users size={20}/> BANCO DE ATLETAS</h2>
                <button onClick={() => setModalAthletes(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'6px', borderRadius:'50%'}}><X size={18}/></button>
              </div>
+             
              <div style={{background: THEME.bg, padding:'15px', borderRadius:'8px', border:`1px solid ${THEME.cardBorder}`, marginBottom:'20px'}}>
                 <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:'10px', marginBottom:'10px'}}>
                    <input type="text" placeholder="Nome Completo" value={newAthleteName} onChange={e => setNewAthleteName(e.target.value)} style={{padding:'12px', borderRadius:'6px', border:'none', fontSize:'13px', background: THEME.card, color:'white'}} />
@@ -712,6 +779,7 @@ export default function JudoPlayer() {
                 </div>
                 <button onClick={saveAthlete} style={{...btnStyle, width:'100%', padding:'12px', background: THEME.success, color:'white', fontSize:'13px', fontWeight:'700'}}><UserPlus size={16}/> ADICIONAR ATLETA</button>
              </div>
+
              <div style={{maxHeight:'300px', overflowY:'auto'}}>
                  {athletes.length === 0 && <div style={{textAlign:'center', color: THEME.textDim, fontSize:'12px', padding:'20px'}}>Nenhum atleta cadastrado.</div>}
                  {athletes.map(a => (
@@ -860,7 +928,7 @@ export default function JudoPlayer() {
                </select>
             </div>
 
-            <button onClick={salvarNeWaza} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.newazaGradient, color:'white', fontSize:'16px', fontWeight:'700'}}>REGISTRAR SOLO</button>
+            <button onClick={salvarNeWaza} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.newaza, color:'white', fontSize:'16px', fontWeight:'700'}}>REGISTRAR SOLO</button>
           </div>
         </div>
       )}
@@ -903,7 +971,7 @@ export default function JudoPlayer() {
                </div>
             </div>
 
-            <button onClick={salvarKumiKata} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.kumiGradient, color:'white', fontSize:'16px', fontWeight:'700'}}>CONFIRMAR PEGADA</button>
+            <button onClick={salvarKumiKata} style={{...btnStyle, width:'100%', padding:'16px', background: THEME.success, color:'white', fontSize:'16px', fontWeight:'700'}}>CONFIRMAR PEGADA</button>
           </div>
         </div>
       )}
