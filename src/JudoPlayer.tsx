@@ -3,8 +3,9 @@ import YouTube from 'react-youtube';
 import { 
   Play, Pause, Trash2, Download, Video, Film, List, X, 
   Clock, Flag, CheckCircle, ChevronLeft, ChevronRight, Search, 
-  MousePointerClick, Gauge, Youtube, Rewind, BarChart2, PieChart,
-  Edit2, Bot, Copy, Check, Keyboard, AlertTriangle, AlertOctagon
+  MousePointerClick, Gauge, Bot, Copy, Check, Keyboard, 
+  AlertTriangle, AlertOctagon, BarChart2, PieChart, Edit2,
+  PenTool, ArrowUpRight, Eraser, Palette // Ícones novos do Telestrator
 } from 'lucide-react';
 
 // --- THEME SYSTEM ---
@@ -36,6 +37,15 @@ export default function JudoPlayer() {
   const filePlayerRef = useRef<any>(null);
   const fileInputRef = useRef<any>(null);
   const inputRef = useRef<any>(null);
+  
+  // TELESTRATOR REFS
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [drawTool, setDrawTool] = useState<'PEN' | 'ARROW'>('PEN');
+  const [drawColor, setDrawColor] = useState('#eab308'); // Amarelo padrão
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPos, setStartPos] = useState<{x:number, y:number} | null>(null);
+  const [snapshot, setSnapshot] = useState<ImageData | null>(null);
 
   // STATE: VIDEO & PLAYLIST
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([{ id: 'kU_gjfnyu6A', type: 'YOUTUBE', name: 'Final Paris 2025' }]);
@@ -70,24 +80,54 @@ export default function JudoPlayer() {
 
   // DB
   const [eventos, setEventos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('smaartpro_db_v13_6') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('smaartpro_db_v14') || '[]'); } catch { return []; }
   });
-  useEffect(() => { localStorage.setItem('smaartpro_db_v13_6', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('smaartpro_db_v14', JSON.stringify(eventos)); }, [eventos]);
 
   // Handlers
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 800);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 800);
+      // Redimensionar canvas se necessário
+      if(canvasRef.current) {
+        const parent = canvasRef.current.parentElement;
+        if(parent) {
+          canvasRef.current.width = parent.clientWidth;
+          canvasRef.current.height = parent.clientHeight;
+        }
+      }
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // --- DERIVED STATE (FIGHT STATUS) ---
-  const isFightActive = useMemo(() => {
-    // CORREÇÃO CRÍTICA (v13.6): Renomeado de e:any para ev:any e usado corretamente
-    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => b.tempo - a.tempo);
-    if (evs.length === 0) return false;
-    return evs[0].tipo === 'HAJIME';
-  }, [eventos, currentVideo.name]);
+  // --- ATALHOS DE TECLADO ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (modalIA) return;
+      if (modalAberto) {
+        if (e.key === 'Escape') setModalAberto(false);
+        if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA');
+        return;
+      }
+      if (document.activeElement?.tagName === 'INPUT') return;
+
+      switch(e.code) {
+        case 'Space': e.preventDefault(); toggleFightState(); break; 
+        case 'KeyP': e.preventDefault(); toggleVideo(); break;
+        case 'KeyD': e.preventDefault(); toggleDrawingMode(); break; // D = DRAWING
+        case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
+        case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
+        case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
+        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break;
+        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
+        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
+        case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode]);
 
   // --- PLAYER & PLAYLIST ---
   const handleFileSelect = (e: any) => {
@@ -138,12 +178,121 @@ export default function JudoPlayer() {
   const irPara = (t: number) => { const st = Math.max(0, t - 2); if (currentVideo.type === 'YOUTUBE') { youtubePlayerRef.current.seekTo(st, true); youtubePlayerRef.current.playVideo(); } else { filePlayerRef.current.currentTime = st; filePlayerRef.current.play(); } setCurrentTime(st); };
   const mudarVelocidade = () => { const r = [0.25, 0.5, 1.0, 1.5, 2.0]; const n = r[(r.indexOf(playbackRate)+1)%r.length]; setPlaybackRate(n); if(currentVideo.type==='YOUTUBE') youtubePlayerRef.current.setPlaybackRate(n); else filePlayerRef.current.playbackRate = n; };
 
+  // --- TELESTRATOR LOGIC (DESENHO) ---
+  const toggleDrawingMode = () => {
+    const newState = !isDrawingMode;
+    setIsDrawingMode(newState);
+    if (newState) {
+      // Pausa vídeo ao entrar no modo desenho
+      if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); 
+      else filePlayerRef.current?.pause();
+      
+      // Setup inicial do canvas
+      setTimeout(() => {
+        if(canvasRef.current) {
+          const parent = canvasRef.current.parentElement;
+          if(parent) {
+            canvasRef.current.width = parent.clientWidth;
+            canvasRef.current.height = parent.clientHeight;
+          }
+        }
+      }, 50);
+    } else {
+      clearCanvas();
+    }
+  };
+
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawingMode || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Get coordinates relative to canvas
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    setIsDrawing(true);
+    setStartPos({x, y});
+    setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height)); // Salva estado atual para preview de formas
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing || !canvasRef.current || !startPos) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    if (drawTool === 'PEN') {
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else if (drawTool === 'ARROW') {
+      // Limpa e restaura snapshot para desenhar o preview da seta
+      if (snapshot) ctx.putImageData(snapshot, 0, 0);
+      drawArrow(ctx, startPos.x, startPos.y, x, y);
+    }
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing || !canvasRef.current) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if(ctx) ctx.closePath();
+    setIsDrawing(false);
+    setSnapshot(null);
+  };
+
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number) => {
+    const headLength = 15; 
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Arrowhead
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  };
+
+  const clearCanvas = () => {
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
   // --- REGISTRO & FLUXO ---
   const registrarFluxo = (tipo: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'FLUXO', tipo, atleta: '-', lado: '-', corTecnica: THEME.neutral }, ...prev]);
   const registrarPunicaoDireto = (tipo: string, atleta: string) => setEventos((prev: any[]) => [{ id: Date.now(), videoId: currentVideo.name, tempo: currentTime, categoria: 'PUNICAO', tipo, especifico: motivoShido, atleta, lado: '-', corTecnica: THEME.warning }, ...prev]);
 
   const toggleFightState = () => {
-    if (isFightActive) registrarFluxo('MATE');
+    // DERIVED STATE inside function to ensure latest data if hook fails to update fast enough
+    const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO').sort((a:any, b:any) => b.tempo - a.tempo);
+    const active = evs.length > 0 && evs[0].tipo === 'HAJIME';
+    
+    if (active) registrarFluxo('MATE');
     else registrarFluxo('HAJIME');
   };
 
@@ -151,7 +300,6 @@ export default function JudoPlayer() {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause();
     let t = currentTime;
     if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) t = youtubePlayerRef.current.getCurrentTime(); else if(filePlayerRef.current) t = filePlayerRef.current.currentTime;
-    
     setEditingEventId(null); setTempoCapturado(t); setModalAtleta('BRANCO'); setModalNome(''); setPunicaoMode(null);
     setResultadoPreSelecionado(resultadoInicial || null);
     setModalAberto(true); setTimeout(() => inputRef.current?.focus(), 100);
@@ -189,33 +337,6 @@ export default function JudoPlayer() {
     if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.playVideo(); else filePlayerRef.current.play();
   };
 
-  // --- ATALHOS DE TECLADO ---
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (modalIA) return;
-      if (modalAberto) {
-        if (e.key === 'Escape') setModalAberto(false);
-        if (e.key === 'Enter' && !punicaoMode) confirmarEContinuar(resultadoPreSelecionado || 'NADA');
-        return;
-      }
-      if (document.activeElement?.tagName === 'INPUT') return;
-
-      switch(e.code) {
-        case 'Space': e.preventDefault(); toggleFightState(); break; // SPACE = SÓ FLUXO (HAJIME/MATE)
-        case 'KeyP': e.preventDefault(); toggleVideo(); break; // P = SÓ VÍDEO
-        case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
-        case 'KeyW': e.preventDefault(); iniciarRegistroRapido('WAZA-ARI'); break;
-        case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
-        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break;
-        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
-        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
-        case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isFightActive]);
-
   // --- CÁLCULOS ---
   const accumulatedFightTime = useMemo(() => {
     let total = 0; let start = null;
@@ -229,7 +350,6 @@ export default function JudoPlayer() {
   }, [eventos, currentTime, currentVideo.name]);
 
   const tempoDisplay = useMemo(() => {
-    // CORREÇÃO CRÍTICA (v13.6): Renomeado de e:any para ev:any
     const hasHajime = eventos.some((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME');
     if (!hasHajime) return { text: "TEMPO REGULAR", time: "4:00", isGS: false };
     const elapsed = accumulatedFightTime;
@@ -238,7 +358,6 @@ export default function JudoPlayer() {
   }, [accumulatedFightTime, eventos, currentVideo.name]);
 
   const fightStartTime = useMemo(() => {
-    // CORREÇÃO CRÍTICA (v13.6): Renomeado de e.categoria para ev.categoria
     const evs = eventos.filter((ev:any) => ev.videoId === currentVideo.name && ev.categoria === 'FLUXO' && ev.tipo === 'HAJIME').sort((a:any,b:any)=>a.tempo-b.tempo);
     return evs.length > 0 ? evs[0].tempo : 0;
   }, [eventos, currentVideo.name]);
@@ -297,7 +416,7 @@ export default function JudoPlayer() {
         const start = sorted.find((e:any)=>e.categoria==='FLUXO'&&e.tipo==='HAJIME')?.tempo || 0;
         sorted.forEach((e:any) => { csv+=`${e.videoId};${e.tempo.toFixed(3).replace('.',',')};${(e.tempo-start).toFixed(1).replace('.',',')};${e.categoria};${e.especifico||e.tipo||'-'};${e.resultado||'-'};${e.atleta};${e.lado};${e.grupo||e.tipo}\n`; });
     });
-    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v13_6_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+    const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `smaartpro_v14_${new Date().toISOString().slice(0,10)}.csv`; link.click();
   };
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
   const SimpleDonut = ({ data }: { data: any[] }) => {
@@ -316,7 +435,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'22px':'26px', fontWeight: '800', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' }}>
           <Video size={28} color={THEME.primary} style={{marginRight:'10px'}}/>
           <span style={{ color: THEME.primary }}>SMAART</span><span style={{ color: THEME.textDim, margin: '0 6px', fontWeight:'300' }}>|</span><span style={{ color: 'white' }}>PRO</span>
-          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v13.6 Fix</span>
+          <span style={{ fontSize: '11px', color: THEME.textDim, marginLeft: '12px', background: THEME.card, padding: '2px 6px', borderRadius: '4px', border:`1px solid ${THEME.cardBorder}` }}>v14.0 Telestrator</span>
         </h1>
         <div style={{display:'flex', gap:'10px'}}>
           <div style={{display:'flex', background: THEME.card, borderRadius:'8px', padding:'4px', border:`1px solid ${THEME.cardBorder}`}}>
@@ -346,14 +465,12 @@ export default function JudoPlayer() {
       {modalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-            
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
               <h2 style={{margin:0, color: punicaoMode ? THEME.danger : THEME.primary, fontSize:'20px', display:'flex', alignItems:'center', gap:'10px', fontWeight:'700'}}>
                 {punicaoMode ? (punicaoMode==='SHIDO' ? <><AlertTriangle size={24}/> REGISTRAR SHIDO</> : <><AlertOctagon size={24}/> REGISTRAR HANSOKU</>) : <><MousePointerClick size={24}/> {editingEventId ? 'EDITAR (VAR)' : 'REGISTRAR TÉCNICA'}</>}
               </h2>
               <button onClick={() => setModalAberto(false)} style={{...btnStyle, background: THEME.cardBorder, color: THEME.textDim, padding:'8px', borderRadius:'50%'}}><X size={18}/></button>
             </div>
-
             {punicaoMode ? (
               <div>
                 <div style={{fontSize:'12px', color: THEME.textDim, marginBottom:'10px', textAlign:'center', textTransform:'uppercase'}}>Quem cometeu a infração?</div>
@@ -396,8 +513,38 @@ export default function JudoPlayer() {
         {/* COLUNA ESQUERDA */}
         <div style={{ flex: 3, width: '100%' }}>
           <div style={{ ...cardStyle, position: 'relative', paddingTop: '56.25%', width: '100%', marginBottom: '20px' }}>
-               {/* OVERLAY DE FOCO (CLIQUE NO VIDEO = PLAY/PAUSE) */}
-               <div onClick={toggleVideo} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>
+               {/* CAMADA DE DESENHO (CANVAS) */}
+               {isDrawingMode && (
+                 <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', zIndex:20, cursor: drawTool==='PEN' ? 'crosshair' : 'default'}}>
+                   <canvas 
+                     ref={canvasRef}
+                     onMouseDown={startDrawing}
+                     onMouseMove={draw}
+                     onMouseUp={stopDrawing}
+                     onMouseLeave={stopDrawing}
+                     onTouchStart={startDrawing}
+                     onTouchMove={draw}
+                     onTouchEnd={stopDrawing}
+                     style={{width:'100%', height:'100%'}}
+                   />
+                   {/* TOOLBAR FLUTUANTE */}
+                   <div style={{position:'absolute', top:'10px', left:'10px', background:'rgba(0,0,0,0.8)', padding:'8px', borderRadius:'8px', display:'flex', gap:'8px', backdropFilter:'blur(4px)', border:`1px solid ${THEME.cardBorder}`}}>
+                     <button onClick={() => setDrawTool('PEN')} style={{...btnStyle, background: drawTool==='PEN'?THEME.primary:'transparent', color:'white', padding:'6px'}}><PenTool size={18}/></button>
+                     <button onClick={() => setDrawTool('ARROW')} style={{...btnStyle, background: drawTool==='ARROW'?THEME.primary:'transparent', color:'white', padding:'6px'}}><ArrowUpRight size={18}/></button>
+                     <div style={{width:'1px', background:'white', opacity:0.2, margin:'0 4px'}}></div>
+                     <button onClick={() => setDrawColor('#eab308')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#eab308', border: drawColor==='#eab308'?'2px solid white':'none', cursor:'pointer'}}></button>
+                     <button onClick={() => setDrawColor('#ef4444')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#ef4444', border: drawColor==='#ef4444'?'2px solid white':'none', cursor:'pointer'}}></button>
+                     <button onClick={() => setDrawColor('#3b82f6')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#3b82f6', border: drawColor==='#3b82f6'?'2px solid white':'none', cursor:'pointer'}}></button>
+                     <button onClick={() => setDrawColor('#ffffff')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#ffffff', border: drawColor==='#ffffff'?'2px solid white':'none', cursor:'pointer'}}></button>
+                     <div style={{width:'1px', background:'white', opacity:0.2, margin:'0 4px'}}></div>
+                     <button onClick={clearCanvas} style={{...btnStyle, background:'transparent', color:THEME.danger, padding:'6px'}}><Eraser size={18}/></button>
+                     <button onClick={toggleDrawingMode} style={{...btnStyle, background: THEME.surface, color:'white', padding:'6px'}}><X size={18}/></button>
+                   </div>
+                 </div>
+               )}
+
+               {/* OVERLAY DE FOCO (SÓ QUANDO NÃO ESTÁ DESENHANDO) */}
+               {!isDrawingMode && <div onClick={toggleVideo} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>}
                
                {currentVideo.type === 'YOUTUBE' ? (<YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }} />) : (<div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>)}
           </div>
@@ -408,7 +555,8 @@ export default function JudoPlayer() {
                <div style={{display:'flex', flexDirection:'column'}}><span style={{fontSize:'13px', fontWeight:'600', color: THEME.text}}>{currentVideoIndex+1}. {currentVideo.name}</span><span style={{fontSize:'11px', color: THEME.textDim, fontFamily:'monospace'}}>{formatTimeVideo(currentTime)} / {formatTimeVideo(duration)}</span></div>
              </div>
              <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                <div style={{fontSize:'11px', color: THEME.textDim, fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> P = PLAY VIDEO</div>
+                <button onClick={toggleDrawingMode} style={{...btnStyle, background: isDrawingMode ? THEME.primary : THEME.surface, border:`1px solid ${isDrawingMode ? THEME.primary : THEME.cardBorder}`, color: isDrawingMode ? 'white' : THEME.textDim, padding:'6px 12px', fontSize:'11px', display:'flex', gap:'6px'}}><PenTool size={14}/> {isDrawingMode ? 'DESENHANDO (D)' : 'DESENHAR (D)'}</button>
+                <div style={{fontSize:'11px', color: THEME.textDim, fontWeight:'600', display:'flex', gap:'5px', alignItems:'center'}}><Keyboard size={14}/> P = PLAY</div>
                 <button onClick={mudarVelocidade} style={{...btnStyle, background: THEME.surface, border:`1px solid ${THEME.cardBorder}`, color: THEME.textDim, padding:'4px 10px', fontSize:'11px'}}><Gauge size={14}/> {playbackRate}x</button>
              </div>
           </div>
