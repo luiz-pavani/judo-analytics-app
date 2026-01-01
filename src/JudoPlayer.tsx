@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import YouTube from 'react-youtube';
 import { 
   Play, Pause, Trash2, Download, Video, Film, List, X, 
@@ -432,6 +432,18 @@ export default function JudoPlayer() {
   const cardStyle: any = { background: THEME.card, border: `1px solid ${THEME.cardBorder}`, borderRadius: '16px', overflow: 'hidden' };
   const btnStyle: any = { cursor: 'pointer', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' };
 
+  function adicionarYoutube(event: MouseEvent<HTMLButtonElement, MouseEvent>): void {
+    throw new Error('Function not implemented.');
+  }
+
+  function handleFileSelect(event: ChangeEvent<HTMLInputElement>): void {
+    throw new Error('Function not implemented.');
+  }
+
+  function confirmarEContinuar(arg0: string): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
       
@@ -628,10 +640,10 @@ export default function JudoPlayer() {
           <div style={{ flex: 1, display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px', alignItems:'center' }}>
               <div style={{display:'flex', alignItems:'center', gap:'8px'}}><h3 style={{margin:0, fontSize:'13px', color: THEME.textDim, fontWeight:'600'}}>TIMELINE</h3><Keyboard size={12} color={THEME.textDim}/></div>
-              <button onClick={()=>setEventos(eventos.filter(e => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
+              <button onClick={()=>setEventos(eventos.filter((e: { videoId: string; }) => e.videoId !== currentVideo.name))} style={{background:'none', border:'none', color: THEME.textDim, cursor:'pointer'}}><Trash2 size={16}/></button>
             </div>
             <div style={{ ...cardStyle, flex:1, padding: '8px', minHeight: '200px', overflowY: 'auto', background: THEME.surface }}>
-              {eventos.filter(e => e.videoId === currentVideo.name).map((ev: any) => (
+              {eventos.filter((e: { videoId: string; }) => e.videoId === currentVideo.name).map((ev: any) => (
                 <div key={ev.id} style={{ 
                   padding: '10px 12px', marginBottom: '6px', borderRadius: '8px', 
                   background: THEME.card, borderLeft: `4px solid ${ev.corTecnica || getCorBorda(ev)}`, 
@@ -667,4 +679,8 @@ export default function JudoPlayer() {
       </div>
     </div>
   );
+}
+
+function confirmarEContinuar(arg0: string) {
+  throw new Error('Function not implemented.');
 }
