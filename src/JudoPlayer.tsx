@@ -15,7 +15,7 @@ import {
   LayoutDashboard, FolderOpen, Shield, Move, Timer, Zap, Undo, Camera
 } from 'lucide-react';
 
-// --- CONFIGURAÇÃO SUPABASE (SUAS CHAVES) ---
+// --- CONFIGURAÇÃO SUPABASE ---
 const supabaseUrl = 'https://swvkleuxdqvyygelnxgc.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3dmtsZXV4ZHF2eXlnZWxueGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNjQ5NjUsImV4cCI6MjA4Mjk0MDk2NX0.GlroeJMkACCt-qqpux1-gzlv9WVl8iD1ELcy_CfBaQg';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -170,7 +170,7 @@ export default function JudoPlayer() {
   const [metaWhiteId, setMetaWhiteId] = useState('');
   const [metaBlueId, setMetaBlueId] = useState('');
 
-  // --- STATE: DRAWING (TELESTRATOR v28.6) ---
+  // --- STATE: DRAWING (TELESTRATOR) ---
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawTool, setDrawTool] = useState<'PEN' | 'ARROW' | 'ANGLE'>('PEN');
   const [drawColor, setDrawColor] = useState('#eab308');
@@ -232,13 +232,14 @@ export default function JudoPlayer() {
     const { data: dbAthletes } = await supabase.from('athletes').select('*');
     if (dbAthletes) setAthletes(dbAthletes);
 
-    // 2. Carregar Eventos
+    // 2. Carregar Eventos (CORRIGIDO: MAPEAR GRUPO)
     const { data: dbEvents } = await supabase.from('events').select('*');
     if (dbEvents) {
        const formattedEvents = dbEvents.map(e => ({
           ...e,
           videoId: e.video_id,
-          corTecnica: e.cor_tecnica
+          corTecnica: e.cor_tecnica,
+          grupo: e.grupo // <--- IMPORTANTE: CORREÇÃO DO GRÁFICO
        }));
        setEventos(formattedEvents);
     }
@@ -564,7 +565,7 @@ export default function JudoPlayer() {
   const handleFileSelect = (e: any) => { const files = Array.from(e.target.files || []); const newItems: PlaylistItem[] = files.map((file: any) => ({ id: URL.createObjectURL(file), type: 'FILE', name: file.name })); if (playlist.length === 1 && playlist[0].id === 'kU_gjfnyu6A') { setPlaylist(newItems); setCurrentVideoIndex(0); } else { setPlaylist([...playlist, ...newItems]); } setShowPlaylist(true); };
   const adicionarYoutube = () => { const link = prompt("Cole o Link do YouTube:"); if (link) { const id = link.includes('v=') ? link.split('v=')[1].split('&')[0] : link.split('/').pop() || link; setPlaylist([...playlist, { id, type: 'YOUTUBE', name: `YouTube: ${id}` }]); setShowPlaylist(true); } };
 
-  // SALVAR E FECHAR (GERAL / NAGE-WAZA) - NUVEM
+  // SALVAR E FECHAR (GERAL / NAGE-WAZA) - NUVEM - CORRIGIDO GRUPO
   const salvarEFechar = async (dados: any) => { 
     let novoEvento;
     if (editingEventId) {
@@ -578,6 +579,7 @@ export default function JudoPlayer() {
             tempo: dados.tempo,
             categoria: dados.categoria,
             tipo: dados.tipo,
+            grupo: dados.grupo, // <--- ADICIONADO GRUPO
             especifico: dados.especifico,
             atleta: dados.atleta,
             lado: dados.lado,
@@ -606,6 +608,7 @@ export default function JudoPlayer() {
             tempo: novoEvento.tempo,
             categoria: novoEvento.categoria,
             tipo: novoEvento.tipo,
+            grupo: novoEvento.grupo, // <--- ADICIONADO GRUPO
             especifico: novoEvento.especifico,
             atleta: novoEvento.atleta,
             lado: novoEvento.lado,
@@ -690,13 +693,56 @@ export default function JudoPlayer() {
       redrawStrokes(newStrokes);
   };
 
-  // DOWNLOAD SNAPSHOT
+  // DOWNLOAD SNAPSHOT (FIXED: MERGE VIDEO + DRAWING)
   const downloadSnapshot = () => {
-      if (canvasRef.current) {
-          const link = document.createElement('a');
-          link.download = `analise_desenho_${Date.now()}.png`;
-          link.href = canvasRef.current.toDataURL();
-          link.click();
+      // CENÁRIO 1: YouTube (Restrição de Segurança)
+      if (currentVideo.type === 'YOUTUBE') {
+          alert("⚠️ Aviso do Navegador:\n\nPor restrições de segurança do Google/YouTube, não é possível capturar o frame do vídeo via código.\n\nA imagem salva conterá apenas seus desenhos (fundo transparente). Para vídeos locais (+ ARQ), a captura é completa.");
+          
+          if (canvasRef.current) {
+              const link = document.createElement('a');
+              link.download = `SMAARTPRO_DESENHO_${Date.now()}.png`;
+              link.href = canvasRef.current.toDataURL();
+              link.click();
+          }
+          return;
+      }
+
+      // CENÁRIO 2: Arquivo Local (Merge Completo)
+      const videoElement = filePlayerRef.current;
+      const drawingCanvas = canvasRef.current;
+
+      if (videoElement && drawingCanvas) {
+          // 1. Criar um canvas temporário na memória
+          const tempCanvas = document.createElement('canvas');
+          const ctx = tempCanvas.getContext('2d');
+          
+          // 2. Usar a resolução original do vídeo para alta qualidade
+          const w = videoElement.videoWidth;
+          const h = videoElement.videoHeight;
+          
+          tempCanvas.width = w;
+          tempCanvas.height = h;
+
+          if (ctx) {
+              // 3. Desenhar o frame do vídeo primeiro (Fundo)
+              ctx.drawImage(videoElement, 0, 0, w, h);
+
+              // 4. Desenhar os traços por cima (Escalando se necessário)
+              ctx.drawImage(drawingCanvas, 0, 0, w, h);
+
+              // 5. Adicionar Marca d'água (Opcional - Profissionalismo)
+              ctx.font = `bold ${Math.floor(h * 0.03)}px Arial`;
+              ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+              ctx.textAlign = "right";
+              ctx.fillText("SMAART PRO ANALYTICS", w - 20, h - 20);
+
+              // 6. Gerar e baixar
+              const link = document.createElement('a');
+              link.download = `SMAARTPRO_ANALISE_${Date.now()}.png`;
+              link.href = tempCanvas.toDataURL('image/png', 1.0); // Qualidade máxima
+              link.click();
+          }
       }
   };
 
@@ -784,7 +830,8 @@ export default function JudoPlayer() {
   const onFileEnded = () => proximoVideo();
   
   const getCorBorda = (ev: any) => { if (ev.categoria === 'FLUXO') return THEME.neutral; if (ev.atleta === 'AZUL') return THEME.primary; return '#ffffff'; };
-  const SimpleDonut = ({ data }: { data: any[] }) => { let cumPct = 0; if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>; return <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: `conic-gradient(${data.map(d => { const str = `${d.color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`}}><div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div></div>; };
+  // Adicionei um fallback (|| '#333') para evitar que a cor venha vazia e quebre o gráfico
+  const SimpleDonut = ({ data }: { data: any[] }) => { let cumPct = 0; if(data.length === 0) return <div style={{width:'100px', height:'100px', borderRadius:'50%', border:`4px solid ${THEME.cardBorder}`, display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={20} color={THEME.cardBorder}/></div>; return <div style={{position:'relative', width:'120px', height:'120px', borderRadius:'50%', background: `conic-gradient(${data.map(d => { const color = d.color || '#64748b'; const str = `${color} ${cumPct}% ${cumPct + d.pct}%`; cumPct += d.pct; return str; }).join(', ')})`}}><div style={{position:'absolute', top:'20%', left:'20%', width:'60%', height:'60%', background: THEME.card, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><PieChart size={24} color={THEME.textDim}/></div></div>; };
   
   // Custom Styles
   const cardStyle: any = { background: THEME.card, border: `1px solid ${THEME.cardBorder}`, borderRadius: '12px', overflow: 'hidden', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' };
@@ -817,7 +864,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'24px':'32px', fontWeight: '800', letterSpacing: '-1px', display: 'flex', alignItems: 'center' }}>
           <div style={{background: THEME.primaryGradient, padding:'8px', borderRadius:'12px', marginRight:'12px', boxShadow:`0 0 20px ${THEME.primary}44`}}><Video size={24} color="white"/></div>
           <div><span style={{ color: 'white' }}>SMAART</span><span style={{ color: THEME.primary }}>PRO</span><div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'400', letterSpacing:'2px', marginTop:'-4px'}}>ELITE JUDO ANALYTICS</div></div>
-          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v28.6 TELESTRATOR</span>
+          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v28.7</span>
         </h1>
         
         <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
@@ -1571,12 +1618,12 @@ export default function JudoPlayer() {
   );
 
   // ==================================================================================
-  // 5. FUNÇÕES DE SUPORTE (DEFINIDAS AQUI PARA FUNCIONAR DENTRO DO ESCOPO DO COMPONENTE)
+  // 5. FUNÇÕES DE SUPORTE
   // ==================================================================================
   
   function exportarBackup() {
       const backupData = {
-          version: "28.6",
+          version: "28.7",
           date: new Date().toISOString(),
           eventos,
           athletes,
