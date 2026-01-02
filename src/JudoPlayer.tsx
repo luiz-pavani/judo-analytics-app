@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
-import YouTube from 'react-youtube';
+import React, { useRef, useState, useEffect, useMemo, type ChangeEvent, type SyntheticEvent } from 'react';
+import YouTube, { type YouTubeEvent } from 'react-youtube';
 import { createClient } from '@supabase/supabase-js'; 
 import jsPDF from 'jspdf'; 
 import autoTable from 'jspdf-autotable'; 
@@ -1013,6 +1013,18 @@ export default function JudoPlayer() {
       </div>
   );
 
+  function handleMetaUpload(event: ChangeEvent<HTMLInputElement>): void {
+    throw new Error('Function not implemented.');
+  }
+
+  function onReady(event: YouTubeEvent<any>): void {
+    throw new Error('Function not implemented.');
+  }
+
+  function onFileEnded(event: SyntheticEvent<HTMLVideoElement, Event>): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <div ref={mainContainerRef} tabIndex={0} style={{ maxWidth: '100%', minHeight: '100vh', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif', color: THEME.text, backgroundColor: THEME.bg, padding: '20px', boxSizing: 'border-box', outline: 'none' }}>
       <style>{GLOBAL_STYLES}</style>
@@ -1217,7 +1229,7 @@ export default function JudoPlayer() {
                    )}
                    {!isDrawingMode && <div onClick={toggleVideo} style={{position:'absolute', top:0, left:0, width:'100%', height:'85%', zIndex:10, cursor:'pointer'}}></div>}
                    {currentVideo.type === 'YOUTUBE' ? (
-                     <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%'}}><YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onStateChange} opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, controls: 0, rel: 0, showinfo: 0, modestbranding: 1, playsinline: 1, fs: 0 } }} style={{width:'100%', height:'100%'}}/></div>
+                     <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%'}}><YouTube videoId={currentVideo.id} onReady={onReady} onStateChange={onratechange} opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, controls: 0, rel: 0, showinfo: 0, modestbranding: 1, playsinline: 1, fs: 0 } }} style={{width:'100%', height:'100%'}}/></div>
                    ) : (
                      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background:'black' }}><video ref={filePlayerRef} src={currentVideo.id} style={{width:'100%', height:'100%', objectFit:'contain'}} controls={false} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={onFileEnded} onLoadedMetadata={(e:any) => setDuration(e.target.duration)}/></div>
                    )}
