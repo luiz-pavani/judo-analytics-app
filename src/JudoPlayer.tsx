@@ -12,7 +12,7 @@ import {
   FileJson, UploadCloud, Printer, SkipBack, SkipForward, Hand,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Compass, Trophy, Layers, Tornado,
   MapPin, Grid, Activity, Triangle, PlayCircle, Users, UserPlus, MonitorPlay,
-  LayoutDashboard, FolderOpen, Shield, Move, Timer, Zap
+  LayoutDashboard, FolderOpen, Shield, Move, Timer, Zap, Undo, Camera
 } from 'lucide-react';
 
 // --- CONFIGURAÇÃO SUPABASE (SUAS CHAVES) ---
@@ -170,10 +170,11 @@ export default function JudoPlayer() {
   const [metaWhiteId, setMetaWhiteId] = useState('');
   const [metaBlueId, setMetaBlueId] = useState('');
 
-  // --- STATE: DRAWING ---
+  // --- STATE: DRAWING (TELESTRATOR v28.6) ---
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawTool, setDrawTool] = useState<'PEN' | 'ARROW' | 'ANGLE'>('PEN');
   const [drawColor, setDrawColor] = useState('#eab308');
+  const [drawWidth, setDrawWidth] = useState(4); // NOVO: Espessura
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState<{x:number, y:number} | null>(null);
   const [currentStrokes, setCurrentStrokes] = useState<any[]>([]); 
@@ -645,10 +646,10 @@ export default function JudoPlayer() {
   const handleTatamiClick = (e: React.MouseEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; setModalXY({ x, y }); };
   const clearCanvas = () => { if (canvasRef.current) { const ctx = canvasRef.current.getContext('2d'); if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); } setCurrentStrokes([]); };
   
-  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string) => { 
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string, width: number) => { 
       const headLength = 20; 
       const angle = Math.atan2(toY - fromY, toX - fromX); 
-      ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); 
+      ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); 
       ctx.beginPath(); ctx.moveTo(toX, toY); 
       ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); 
       ctx.moveTo(toX, toY); 
@@ -662,11 +663,11 @@ export default function JudoPlayer() {
       if (!canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; 
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); 
       strokesToDraw.forEach(stroke => { 
-          ctx.strokeStyle = stroke.color; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; 
+          ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.width || 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; 
           if (stroke.tool === 'PEN') { 
               ctx.beginPath(); if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); } ctx.stroke(); 
           } else if (stroke.tool === 'ARROW') { 
-              if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color); } 
+              if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color, stroke.width || 4); } 
           } else if (stroke.tool === 'ANGLE') {
               if (stroke.points.length === 3) {
                   const [p1, p2, p3] = stroke.points;
@@ -681,6 +682,24 @@ export default function JudoPlayer() {
 
   const toggleDrawingMode = (loadStrokes?: any[]) => { const newState = !isDrawingMode; setIsDrawingMode(newState); if (newState) { if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current?.pauseVideo(); else filePlayerRef.current?.pause(); if (playerContainerRef.current) { if (playerContainerRef.current.requestFullscreen) { playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); } else { setIsDataFullscreen(true); } } setTimeout(() => { if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (loadStrokes && loadStrokes.length > 0) { setCurrentStrokes(loadStrokes); redrawStrokes(loadStrokes); } } }, 100); } else { if (document.fullscreenElement) document.exitFullscreen(); setIsDataFullscreen(false); clearCanvas(); } };
   
+  // UNDO LAST STROKE
+  const undoLastStroke = () => {
+      const newStrokes = [...currentStrokes];
+      newStrokes.pop();
+      setCurrentStrokes(newStrokes);
+      redrawStrokes(newStrokes);
+  };
+
+  // DOWNLOAD SNAPSHOT
+  const downloadSnapshot = () => {
+      if (canvasRef.current) {
+          const link = document.createElement('a');
+          link.download = `analise_desenho_${Date.now()}.png`;
+          link.href = canvasRef.current.toDataURL();
+          link.click();
+      }
+  };
+
   // SALVAR DESENHO (NUVEM)
   const salvarDesenhoNoLog = async () => { 
       if (currentStrokes.length === 0) { alert("Desenhe algo antes de salvar!"); return; } 
@@ -719,20 +738,20 @@ export default function JudoPlayer() {
               setTempPoints(newPoints);
               ctx.fillStyle = drawColor; ctx.beginPath(); ctx.arc(x, y, 5, 0, 2*Math.PI); ctx.fill();
           } else {
-              setCurrentStrokes(prev => [...prev, { tool: 'ANGLE', color: drawColor, points: newPoints }]);
+              setCurrentStrokes(prev => [...prev, { tool: 'ANGLE', color: drawColor, width: drawWidth, points: newPoints }]);
               setTempPoints([]);
-              redrawStrokes([...currentStrokes, { tool: 'ANGLE', color: drawColor, points: newPoints }]);
+              redrawStrokes([...currentStrokes, { tool: 'ANGLE', color: drawColor, width: drawWidth, points: newPoints }]);
           }
           return;
       }
 
       setIsDrawing(true); setTempPoints([{x, y}]); 
-      if (drawTool === 'PEN') { ctx.beginPath(); ctx.moveTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; } 
+      if (drawTool === 'PEN') { ctx.beginPath(); ctx.moveTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = drawWidth; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; } 
       else if (drawTool === 'ARROW') { setStartPos({x, y}); setSnapshot(ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)); } 
   };
 
-  const draw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); setTempPoints(prev => [...prev, {x, y}]); } else if (drawTool === 'ARROW' && startPos) { if (snapshot) ctx.putImageData(snapshot, 0, 0); drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor); } };
-  const stopDrawing = (e: any) => { e.preventDefault(); if (!isDrawing || !canvasRef.current) return; setIsDrawing(false); const rect = canvasRef.current.getBoundingClientRect(); let finalX = 0, finalY = 0; if (e.type !== 'mouseleave') { const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX; const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY; finalX = clientX - rect.left; finalY = clientY - rect.top; } if (drawTool === 'PEN') { setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, points: tempPoints }]); } else if (drawTool === 'ARROW' && startPos) { setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, points: [{x: startPos.x, y: startPos.y}, {x: finalX, y: finalY}] }]); } setSnapshot(null); setStartPos(null); setTempPoints([]); };
+  const draw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); setTempPoints(prev => [...prev, {x, y}]); } else if (drawTool === 'ARROW' && startPos) { if (snapshot) ctx.putImageData(snapshot, 0, 0); drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor, drawWidth); } };
+  const stopDrawing = (e: any) => { e.preventDefault(); if (!isDrawing || !canvasRef.current) return; setIsDrawing(false); const rect = canvasRef.current.getBoundingClientRect(); let finalX = 0, finalY = 0; if (e.type !== 'mouseleave') { const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX; const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY; finalX = clientX - rect.left; finalY = clientY - rect.top; } if (drawTool === 'PEN') { setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, width: drawWidth, points: tempPoints }]); } else if (drawTool === 'ARROW' && startPos) { setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, width: drawWidth, points: [{x: startPos.x, y: startPos.y}, {x: finalX, y: finalY}] }]); } setSnapshot(null); setStartPos(null); setTempPoints([]); };
 
   // Loop for playlist logic (player)
   useEffect(() => { let af: number; const loop = () => { if (playlistMode) { const currentEvent = playlistQueue[playlistQueueIndex]; if (currentEvent) { const endTime = currentEvent.tempo + 3; if (currentTime >= endTime) { const nextIndex = playlistQueueIndex + 1; if (nextIndex < playlistQueue.length) { setPlaylistQueueIndex(nextIndex); const nextStartTime = Math.max(0, playlistQueue[nextIndex].tempo - 4); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.seekTo(nextStartTime, true); else filePlayerRef.current.currentTime = nextStartTime; } else { pararPlaylistPlayer(); } } } } if (isPlaying) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current?.getCurrentTime) setCurrentTime(youtubePlayerRef.current.getCurrentTime()); else if (currentVideo.type === 'FILE' && filePlayerRef.current) setCurrentTime(filePlayerRef.current.currentTime); af = requestAnimationFrame(loop); } if (loopRange && isPlaying) { if (currentTime >= loopRange.end) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(loopRange.start, true); else if (filePlayerRef.current) filePlayerRef.current.currentTime = loopRange.start; } } }; if (isPlaying) loop(); return () => cancelAnimationFrame(af); }, [isPlaying, currentVideo.type, loopRange, currentTime, playlistMode, playlistQueue, playlistQueueIndex]);
@@ -798,7 +817,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'24px':'32px', fontWeight: '800', letterSpacing: '-1px', display: 'flex', alignItems: 'center' }}>
           <div style={{background: THEME.primaryGradient, padding:'8px', borderRadius:'12px', marginRight:'12px', boxShadow:`0 0 20px ${THEME.primary}44`}}><Video size={24} color="white"/></div>
           <div><span style={{ color: 'white' }}>SMAART</span><span style={{ color: THEME.primary }}>PRO</span><div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'400', letterSpacing:'2px', marginTop:'-4px'}}>ELITE JUDO ANALYTICS</div></div>
-          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v28.5 PDF+</span>
+          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v28.6 TELESTRATOR</span>
         </h1>
         
         <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
@@ -945,18 +964,50 @@ export default function JudoPlayer() {
                    {isDrawingMode && (
                      <div style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', zIndex:20, cursor: drawTool==='PEN' ? 'crosshair' : 'default'}}>
                        <canvas ref={canvasRef} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{width:'100%', height:'100%'}} />
-                       <div className="glass-panel" style={{position:'absolute', top:'16px', left:'16px', padding:'8px', borderRadius:'12px', display:'flex', gap:'8px'}}>
-                         <button onClick={() => setDrawTool('PEN')} style={{...btnStyle, background: drawTool==='PEN'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><PenTool size={18}/></button>
-                         <button onClick={() => setDrawTool('ARROW')} style={{...btnStyle, background: drawTool==='ARROW'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><ArrowUpRight size={18}/></button>
-                         <button onClick={() => setDrawTool('ANGLE')} style={{...btnStyle, background: drawTool==='ANGLE'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><Triangle size={18}/></button>
-                         <div style={{width:'1px', background:'rgba(255,255,255,0.1)', margin:'0 4px'}}></div>
-                         <button onClick={() => setDrawColor('#eab308')} style={{width:'24px', height:'24px', borderRadius:'50%', background:'#eab308', border: drawColor==='#eab308'?'2px solid white':'2px solid transparent'}}></button>
-                         <button onClick={() => setDrawColor('#ef4444')} style={{width:'24px', height:'24px', borderRadius:'50%', background:'#ef4444', border: drawColor==='#ef4444'?'2px solid white':'2px solid transparent'}}></button>
-                         <button onClick={() => setDrawColor('#3b82f6')} style={{width:'24px', height:'24px', borderRadius:'50%', background:'#3b82f6', border: drawColor==='#3b82f6'?'2px solid white':'2px solid transparent'}}></button>
-                         <div style={{width:'1px', background:'rgba(255,255,255,0.1)', margin:'0 4px'}}></div>
-                         <button onClick={clearCanvas} style={{...btnStyle, background:'transparent', color:THEME.danger, padding:'8px'}}><Eraser size={18}/></button>
-                         <button onClick={salvarDesenhoNoLog} style={{...btnStyle, background:THEME.success, color:'white', padding:'8px'}}><Save size={18}/></button>
-                         <button onClick={() => toggleDrawingMode()} style={{...btnStyle, background: 'rgba(255,255,255,0.1)', color:'white', padding:'8px'}}><X size={18}/></button>
+                       
+                       {/* FLOATING DRAWING TOOLS */}
+                       <div className="glass-panel" style={{position:'absolute', top:'16px', left:'16px', padding:'12px', borderRadius:'16px', display:'flex', gap:'12px', alignItems:'center'}}>
+                         
+                         {/* Tools */}
+                         <div style={{display:'flex', gap:'4px'}}>
+                             <button onClick={() => setDrawTool('PEN')} title="Caneta" style={{...btnStyle, background: drawTool==='PEN'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><PenTool size={18}/></button>
+                             <button onClick={() => setDrawTool('ARROW')} title="Seta" style={{...btnStyle, background: drawTool==='ARROW'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><ArrowUpRight size={18}/></button>
+                             <button onClick={() => setDrawTool('ANGLE')} title="Ângulo" style={{...btnStyle, background: drawTool==='ANGLE'?THEME.primary:'transparent', color:'white', padding:'8px', borderRadius:'8px'}}><Triangle size={18}/></button>
+                         </div>
+
+                         <div style={{width:'1px', height:'20px', background:'rgba(255,255,255,0.2)'}}></div>
+
+                         {/* Colors */}
+                         <div style={{display:'flex', gap:'6px'}}>
+                             <button onClick={() => setDrawColor('#eab308')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#eab308', border: drawColor==='#eab308'?'2px solid white':'2px solid transparent'}}></button>
+                             <button onClick={() => setDrawColor('#ef4444')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#ef4444', border: drawColor==='#ef4444'?'2px solid white':'2px solid transparent'}}></button>
+                             <button onClick={() => setDrawColor('#3b82f6')} style={{width:'20px', height:'20px', borderRadius:'50%', background:'#3b82f6', border: drawColor==='#3b82f6'?'2px solid white':'2px solid transparent'}}></button>
+                         </div>
+
+                         <div style={{width:'1px', height:'20px', background:'rgba(255,255,255,0.2)'}}></div>
+
+                         {/* Width Slider */}
+                         <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                            <div style={{width:'4px', height:'4px', background:'white', borderRadius:'50%'}}></div>
+                            <input 
+                                type="range" min="2" max="12" step="2" 
+                                value={drawWidth} 
+                                onChange={(e) => setDrawWidth(parseInt(e.target.value))}
+                                style={{width:'60px', accentColor: THEME.primary, cursor:'pointer'}} 
+                            />
+                            <div style={{width:'10px', height:'10px', background:'white', borderRadius:'50%'}}></div>
+                         </div>
+
+                         <div style={{width:'1px', height:'20px', background:'rgba(255,255,255,0.2)'}}></div>
+
+                         {/* Actions */}
+                         <div style={{display:'flex', gap:'4px'}}>
+                             <button onClick={undoLastStroke} title="Desfazer" style={{...btnStyle, background:'transparent', color:THEME.text, padding:'8px'}}><Undo size={18}/></button>
+                             <button onClick={clearCanvas} title="Limpar Tudo" style={{...btnStyle, background:'transparent', color:THEME.danger, padding:'8px'}}><Eraser size={18}/></button>
+                             <button onClick={downloadSnapshot} title="Baixar Imagem" style={{...btnStyle, background:'transparent', color:THEME.success, padding:'8px'}}><Camera size={18}/></button>
+                             <button onClick={salvarDesenhoNoLog} title="Salvar no Log" style={{...btnStyle, background:THEME.success, color:'white', padding:'8px'}}><Save size={18}/></button>
+                             <button onClick={() => toggleDrawingMode()} title="Fechar" style={{...btnStyle, background: 'rgba(255,255,255,0.1)', color:'white', padding:'8px'}}><X size={18}/></button>
+                         </div>
                        </div>
                      </div>
                    )}
@@ -1525,7 +1576,7 @@ export default function JudoPlayer() {
   
   function exportarBackup() {
       const backupData = {
-          version: "28.5",
+          version: "28.6",
           date: new Date().toISOString(),
           eventos,
           athletes,
