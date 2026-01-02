@@ -109,6 +109,16 @@ type Coordinate = { x: number; y: number };
 type Athlete = { id: string; name: string; country: string; club: string };
 type Mode = 'PLAYER' | 'META';
 
+// Função para converter cor HEX para RGB (usado no PDF)
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+};
+
 export default function JudoPlayer() {
   // --- REFS ---
   const mainContainerRef = useRef<HTMLDivElement>(null);
@@ -788,7 +798,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'24px':'32px', fontWeight: '800', letterSpacing: '-1px', display: 'flex', alignItems: 'center' }}>
           <div style={{background: THEME.primaryGradient, padding:'8px', borderRadius:'12px', marginRight:'12px', boxShadow:`0 0 20px ${THEME.primary}44`}}><Video size={24} color="white"/></div>
           <div><span style={{ color: 'white' }}>SMAART</span><span style={{ color: THEME.primary }}>PRO</span><div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'400', letterSpacing:'2px', marginTop:'-4px'}}>ELITE JUDO ANALYTICS</div></div>
-          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v28.4</span>
+          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v28.5 PDF+</span>
         </h1>
         
         <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
@@ -1515,7 +1525,7 @@ export default function JudoPlayer() {
   
   function exportarBackup() {
       const backupData = {
-          version: "28.4",
+          version: "28.5",
           date: new Date().toISOString(),
           eventos,
           athletes,
@@ -1577,11 +1587,11 @@ export default function JudoPlayer() {
       link.click();
   }
 
-  // --- GERADOR DE PDF PROFISSIONAL (v28.4) ---
+  // --- GERADOR DE PDF COM GRÁFICOS (v28.5) ---
   function imprimirRelatorio() {
       const doc = new jsPDF();
       
-      // 1. CABEÇALHO
+      // 1. CABEÇALHO (Header Azul)
       doc.setFillColor(59, 130, 246); // Primary Blue
       doc.rect(0, 0, 210, 40, 'F');
       
@@ -1603,6 +1613,7 @@ export default function JudoPlayer() {
       doc.setFont('helvetica', 'bold');
       doc.text("RESUMO DO COMBATE", 14, 50);
       
+      // Info da Luta
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       const infoY = 58;
@@ -1610,6 +1621,7 @@ export default function JudoPlayer() {
       doc.text(`Categoria: ${currentMetadata.category || '-'}`, 14, infoY + 5);
       doc.text(`Fase: ${currentMetadata.phase || '-'}`, 14, infoY + 10);
 
+      // Placar Visual
       const scoreY = 55;
       const col1 = 90;
       const col2 = 150;
@@ -1632,19 +1644,44 @@ export default function JudoPlayer() {
       doc.setFontSize(14);
       doc.text(`I:${placar.azul.ippon}  W:${placar.azul.waza}  S:${placar.azul.shido}`, col2, scoreY + 12);
 
-      // 3. ESTATÍSTICAS DE ATAQUE
+      // 3. GRÁFICOS DE VOLUME (BARRAS)
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text("ESTATÍSTICAS DE VOLUME (NAGE-WAZA)", 14, 85);
+      doc.text("ESTATÍSTICAS VISUAIS (NAGE-WAZA)", 14, 85);
       
-      let statY = 92;
-      stats.groupData.forEach((st: any) => {
-          doc.setFont('helvetica', 'normal');
+      let statY = 95;
+      
+      if (stats.groupData.length === 0) {
           doc.setFontSize(9);
-          doc.text(`• ${st.name}: ${st.val} tentativas (${st.pct.toFixed(0)}%)`, 14, statY);
-          statY += 5;
-      });
+          doc.setFont('helvetica', 'normal');
+          doc.text("Nenhum ataque registrado.", 14, statY);
+          statY += 10;
+      } else {
+          stats.groupData.forEach((st: any) => {
+              // Nome do Grupo
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9);
+              doc.setTextColor(50, 50, 50);
+              doc.text(st.name, 14, statY);
+              
+              // Fundo da Barra (Cinza Claro)
+              doc.setFillColor(230, 230, 230);
+              doc.roundedRect(50, statY - 3, 100, 4, 1, 1, 'F');
+              
+              // Barra de Valor (Colorida)
+              const rgb = hexToRgb(st.color || '#333333');
+              doc.setFillColor(rgb.r, rgb.g, rgb.b);
+              const barWidth = (st.pct / 100) * 100; // Máximo 100mm de largura
+              doc.roundedRect(50, statY - 3, barWidth, 4, 1, 1, 'F');
+              
+              // Texto de Valor e Porcentagem
+              doc.setFont('helvetica', 'normal');
+              doc.text(`${st.val} (${st.pct.toFixed(0)}%)`, 155, statY);
+              
+              statY += 10; // Espaçamento entre barras
+          });
+      }
 
       // 4. TABELA DE EVENTOS
       const tableRows = filteredEventos
@@ -1659,15 +1696,15 @@ export default function JudoPlayer() {
           ]);
 
       autoTable(doc, {
-          startY: Math.max(statY + 10, 110),
+          startY: Math.max(statY + 10, 120), // Garante que não sobreponha os gráficos
           head: [['Tempo', 'Atleta', 'Categoria', 'Detalhe / Técnica', 'Resultado', 'Lado']],
           body: tableRows,
           theme: 'grid',
           headStyles: { fillColor: [30, 41, 59] }, // Slate 800
           styles: { fontSize: 8, cellPadding: 2 },
           columnStyles: {
-              0: { cellWidth: 15 }, // Tempo
-              3: { cellWidth: 'auto' } // Detalhe
+              0: { cellWidth: 15 }, 
+              3: { cellWidth: 'auto' }
           }
       });
 
