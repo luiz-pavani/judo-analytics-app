@@ -1,11 +1,13 @@
 import React from 'react';
-import JudoPlayer from './JudoPlayer';
+import JudoPlayer from './JudoPlayer'; // Certifique-se que o caminho está correto
 
-export default function App() {
+function App() {
   return (
-    // Removemos o cabeçalho antigo e tiramos o padding extra
-    <div style={{ minHeight: '100vh', backgroundColor: '#111', margin: 0, padding: 0 }}>
+    <div className="App">
+      {/* Carrega a Versão BETA 3 na página principal */}
       <JudoPlayer />
     </div>
   );
 }
+
+export default App;
