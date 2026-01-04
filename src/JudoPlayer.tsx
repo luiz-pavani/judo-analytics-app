@@ -588,42 +588,240 @@ export default function JudoPlayer() {
   const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, color: string, width: number) => { const headLength = 20; const angle = Math.atan2(toY - fromY, toX - fromX); ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); ctx.beginPath(); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6)); ctx.moveTo(toX, toY); ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6)); ctx.stroke(); };
   const calculateAngle = (p1: any, p2: any, p3: any) => { const p12 = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); const p23 = Math.sqrt(Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2)); const p13 = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2)); const radians = Math.acos((p12*p12 + p23*p23 - p13*p13) / (2 * p12 * p23)); return Math.round(radians * 180 / Math.PI); };
   const redrawStrokes = (strokesToDraw: any[]) => { if (!canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); strokesToDraw.forEach(stroke => { ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.width || 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; if (stroke.tool === 'PEN') { ctx.beginPath(); if (stroke.points.length > 0) { ctx.moveTo(stroke.points[0].x, stroke.points[0].y); stroke.points.forEach((p:any) => ctx.lineTo(p.x, p.y)); } ctx.stroke(); } else if (stroke.tool === 'ARROW') { if (stroke.points.length >= 2) { const start = stroke.points[0]; const end = stroke.points[stroke.points.length - 1]; drawArrow(ctx, start.x, start.y, end.x, end.y, stroke.color, stroke.width || 4); } } else if (stroke.tool === 'ANGLE') { if (stroke.points.length === 3) { const [p1, p2, p3] = stroke.points; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.stroke(); ctx.beginPath(); ctx.arc(p2.x, p2.y, 20, 0, 2 * Math.PI); ctx.stroke(); const angle = calculateAngle(p1, p2, p3); ctx.font = "bold 20px Arial"; ctx.fillStyle = stroke.color; ctx.fillText(`${angle}°`, p2.x + 25, p2.y); } } }); };
-  const toggleDrawingMode = (loadStrokes?: any[]) => { const newState = !isDrawingMode; setIsDrawingMode(newState); if (newState) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current?.pauseVideo) try{youtubePlayerRef.current.pauseVideo()}catch(e){} else if(filePlayerRef.current) filePlayerRef.current.pause(); if (playerContainerRef.current) { if (playerContainerRef.current.requestFullscreen) { playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); } else { setIsDataFullscreen(true); } } setTimeout(() => { if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (loadStrokes && loadStrokes.length > 0) { setCurrentStrokes(loadStrokes); redrawStrokes(loadStrokes); } } }, 100); } else { if (document.fullscreenElement) document.exitFullscreen(); setIsDataFullscreen(false); clearCanvas(); } };
-  const undoLastStroke = () => { const newStrokes = [...currentStrokes]; newStrokes.pop(); setCurrentStrokes(newStrokes); redrawStrokes(newStrokes); };
-  const downloadSnapshot = () => { if (currentVideo.type === 'YOUTUBE') { alert("⚠️ Aviso: YouTube bloqueia captura direta. Baixando apenas o desenho (fundo transparente)."); if (canvasRef.current) { const link = document.createElement('a'); link.download = `SMAARTPRO_DESENHO_${Date.now()}.png`; link.href = canvasRef.current.toDataURL(); link.click(); } return; } const videoElement = filePlayerRef.current; const drawingCanvas = canvasRef.current; if (videoElement && drawingCanvas) { const tempCanvas = document.createElement('canvas'); const ctx = tempCanvas.getContext('2d'); const w = videoElement.videoWidth; const h = videoElement.videoHeight; tempCanvas.width = w; tempCanvas.height = h; if (ctx) { ctx.drawImage(videoElement, 0, 0, w, h); ctx.drawImage(drawingCanvas, 0, 0, w, h); const link = document.createElement('a'); link.download = `SMAARTPRO_ANALISE_${Date.now()}.png`; link.href = tempCanvas.toDataURL('image/png', 1.0); link.click(); } } };
-  const salvarDesenhoNoLog = async () => { if (currentStrokes.length === 0) { alert("Desenhe algo antes de salvar!"); return; } const id = Date.now(); const novo = { id, videoId: currentVideo.name, tempo: currentTime, categoria: 'ANALISE', tipo: 'DESENHO', especifico: 'Anotação Tática Visual', atleta: '-', lado: '-', corTecnica: '#a855f7', vetores: currentStrokes }; setEventos((prev: any[]) => [novo, ...prev]); await supabase.from('events').insert([{ id, video_id: currentVideo.name, tempo: currentTime, categoria: 'ANALISE', tipo: 'DESENHO', especifico: 'Anotação Tática Visual', atleta: '-', lado: '-', cor_tecnica: '#a855f7', vetores: currentStrokes }]); alert("Anotação Visual Catalogada!"); toggleDrawingMode(); };
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'ANGLE') { const newPoints = [...tempPoints, {x, y}]; if (newPoints.length < 3) { setTempPoints(newPoints); ctx.fillStyle = drawColor; ctx.beginPath(); ctx.arc(x, y, 5, 0, 2*Math.PI); ctx.fill(); } else { setCurrentStrokes(prev => [...prev, { tool: 'ANGLE', color: drawColor, width: drawWidth, points: newPoints }]); setTempPoints([]); redrawStrokes([...currentStrokes, { tool: 'ANGLE', color: drawColor, width: drawWidth, points: newPoints }]); } return; } setIsDrawing(true); setTempPoints([{x, y}]); if (drawTool === 'PEN') { ctx.beginPath(); ctx.moveTo(x, y); ctx.strokeStyle = drawColor; ctx.lineWidth = drawWidth; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; } else if (drawTool === 'ARROW') { setStartPos({x, y}); setSnapshot(ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)); } };
-  const draw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); e.stopPropagation(); if (!isDrawing || !canvasRef.current) return; const ctx = canvasRef.current.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX; const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY; const x = clientX - rect.left; const y = clientY - rect.top; if (drawTool === 'PEN') { ctx.lineTo(x, y); ctx.stroke(); setTempPoints(prev => [...prev, {x, y}]); } else if (drawTool === 'ARROW' && startPos) { if (snapshot) ctx.putImageData(snapshot, 0, 0); drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor, drawWidth); } };
-  const stopDrawing = (e: any) => { e.preventDefault(); if (!isDrawing || !canvasRef.current) return; setIsDrawing(false); const rect = canvasRef.current.getBoundingClientRect(); let finalX = 0, finalY = 0; if (e.type !== 'mouseleave') { const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX; const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY; finalX = clientX - rect.left; finalY = clientY - rect.top; } if (drawTool === 'PEN') { setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, width: drawWidth, points: tempPoints }]); } else if (drawTool === 'ARROW' && startPos) { setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, width: drawWidth, points: [{x: startPos.x, y: startPos.y}, {x: finalX, y: finalY}] }]); } setSnapshot(null); setStartPos(null); setTempPoints([]); };
+  // --- INÍCIO DO BLOCO DE CORREÇÃO DE DESENHO (v29.1) ---
 
-  // Loop for playlist logic (player)
-  useEffect(() => { let af: number; const loop = () => { if (playlistMode) { const currentEvent = playlistQueue[playlistQueueIndex]; if (currentEvent) { const endTime = currentEvent.tempo + 3; if (currentTime >= endTime) { const nextIndex = playlistQueueIndex + 1; if (nextIndex < playlistQueue.length) { setPlaylistQueueIndex(nextIndex); const nextStartTime = Math.max(0, playlistQueue[nextIndex].tempo - 4); if (currentVideo.type === 'YOUTUBE') youtubePlayerRef.current.seekTo(nextStartTime, true); else filePlayerRef.current.currentTime = nextStartTime; } else { pararPlaylistPlayer(); } } } } if (isPlaying) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current?.getCurrentTime) setCurrentTime(youtubePlayerRef.current.getCurrentTime()); else if (currentVideo.type === 'FILE' && filePlayerRef.current) setCurrentTime(filePlayerRef.current.currentTime); af = requestAnimationFrame(loop); } if (loopRange && isPlaying) { if (currentTime >= loopRange.end) { if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current) youtubePlayerRef.current.seekTo(loopRange.start, true); else if (filePlayerRef.current) filePlayerRef.current.currentTime = loopRange.start; } } }; if (isPlaying) loop(); return () => cancelAnimationFrame(af); }, [isPlaying, currentVideo.type, loopRange, currentTime, playlistMode, playlistQueue, playlistQueueIndex]);
+  const toggleDrawingMode = (loadStrokes?: any[]) => { 
+    const newState = !isDrawingMode; 
+    setIsDrawingMode(newState); 
+    
+    if (newState) { 
+        // Pausa vídeo ao desenhar
+        if (currentVideo.type === 'YOUTUBE' && youtubePlayerRef.current?.pauseVideo) try{youtubePlayerRef.current.pauseVideo()}catch(e){} 
+        else if(filePlayerRef.current) filePlayerRef.current.pause(); 
+        
+        // Entra em fullscreen se possível para melhor área de desenho
+        if (playerContainerRef.current) { 
+            if (playerContainerRef.current.requestFullscreen) { 
+                playerContainerRef.current.requestFullscreen().catch(() => setIsDataFullscreen(true)); 
+            } else { 
+                setIsDataFullscreen(true); 
+            } 
+        } 
+        
+        // FORÇA O AJUSTE DE RESOLUÇÃO APÓS O RENDER
+        setTimeout(() => { 
+            if(canvasRef.current && canvasRef.current.parentElement) { 
+                // Sincroniza resolução interna com tamanho visual
+                canvasRef.current.width = canvasRef.current.parentElement.clientWidth; 
+                canvasRef.current.height = canvasRef.current.parentElement.clientHeight; 
+                
+                if (loadStrokes && loadStrokes.length > 0) { 
+                    setCurrentStrokes(loadStrokes); 
+                    redrawStrokes(loadStrokes); 
+                } 
+            } 
+        }, 200); // Aumentei levemente o tempo para garantir que o DOM renderizou
+    } else { 
+        if (document.fullscreenElement) document.exitFullscreen(); 
+        setIsDataFullscreen(false); 
+        clearCanvas(); 
+    } 
+};
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (modalIA || reportMode || modalKumi || modalMetadata || modalNeWaza || modalHelp || modalAthletes) return;
-      if (modalAberto) { if (e.key === 'Escape') { setModalAberto(false); } if (e.key === 'Enter' && !punicaoMode && modalAberto) confirmarEContinuar(resultadoPreSelecionado || 'NADA'); return; }
-      if (document.activeElement?.tagName === 'INPUT') return;
-      switch(e.code) {
-        case 'Space': e.preventDefault(); toggleFightState(); break; 
-        case 'KeyP': e.preventDefault(); toggleVideo(); break;
-        case 'KeyD': e.preventDefault(); toggleDrawingMode(); break; 
-        case 'KeyI': e.preventDefault(); iniciarRegistroRapido('IPPON'); break;
-        case 'KeyW': e.preventDefault(); iniciarRegistroRapido('Waza-ari'); break;
-        case 'KeyY': e.preventDefault(); iniciarRegistroRapido('YUKO'); break;
-        case 'KeyN': e.preventDefault(); iniciarRegistroRapido('NADA'); break;
-        case 'KeyS': e.preventDefault(); iniciarRegistroPunicaoTeclado('SHIDO'); break;
-        case 'KeyH': e.preventDefault(); iniciarRegistroPunicaoTeclado('HANSOKU'); break;
-        case 'Enter': e.preventDefault(); iniciarRegistroRapido(); break;
-      }
+const undoLastStroke = () => {
+    const newStrokes = [...currentStrokes];
+    newStrokes.pop();
+    setCurrentStrokes(newStrokes);
+    redrawStrokes(newStrokes);
+};
+
+const downloadSnapshot = () => {
+    if (currentVideo.type === 'YOUTUBE') {
+        alert("⚠️ Aviso: YouTube bloqueia captura direta. Baixando apenas o desenho (fundo transparente).");
+        if (canvasRef.current) {
+            const link = document.createElement('a');
+            link.download = `SMAARTPRO_DESENHO_${Date.now()}.png`;
+            link.href = canvasRef.current.toDataURL();
+            link.click();
+        }
+        return;
+    }
+    const videoElement = filePlayerRef.current;
+    const drawingCanvas = canvasRef.current;
+    if (videoElement && drawingCanvas) {
+        const tempCanvas = document.createElement('canvas');
+        const ctx = tempCanvas.getContext('2d');
+        const w = videoElement.videoWidth;
+        const h = videoElement.videoHeight;
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        if (ctx) {
+            ctx.drawImage(videoElement, 0, 0, w, h);
+            ctx.drawImage(drawingCanvas, 0, 0, w, h);
+            const link = document.createElement('a');
+            link.download = `SMAARTPRO_ANALISE_${Date.now()}.png`;
+            link.href = tempCanvas.toDataURL('image/png', 1.0);
+            link.click();
+        }
+    }
+};
+
+const salvarDesenhoNoLog = async () => { 
+    if (currentStrokes.length === 0) { alert("Desenhe algo antes de salvar!"); return; } 
+    const id = Date.now();
+    // Salva snapshot no banco
+    await supabase.from('events').insert([{
+        id,
+        video_id: currentVideo.name,
+        tempo: currentTime,
+        categoria: 'ANALISE',
+        tipo: 'DESENHO',
+        especifico: 'Anotação Tática Visual',
+        atleta: '-',
+        lado: '-',
+        cor_tecnica: '#a855f7',
+        vetores: currentStrokes
+    }]);
+    // Atualiza local
+    const novo = { id, videoId: currentVideo.name, tempo: currentTime, categoria: 'ANALISE', tipo: 'DESENHO', especifico: 'Anotação Tática Visual', atleta: '-', lado: '-', corTecnica: '#a855f7', vetores: currentStrokes };
+    setEventos((prev: any[]) => [novo, ...prev]); 
+
+    alert("Anotação Visual Catalogada!"); 
+    toggleDrawingMode(); 
+};
+
+// Função auxiliar para pegar coordenada exata considerando zoom/escala
+const getPointerPos = (e: any) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const rect = canvasRef.current.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    // Regra de três para garantir precisão
+    return {
+        x: (clientX - rect.left) * (canvasRef.current.width / rect.width),
+        y: (clientY - rect.top) * (canvasRef.current.height / rect.height)
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAberto, modalIA, isPlaying, currentVideo.type, resultadoPreSelecionado, currentTime, punicaoMode, isDrawingMode, isFightActive, reportMode, modalKumi, modalMetadata, modalNeWaza, modalHelp, modalAthletes]);
+};
 
-  useEffect(() => { const handleResize = () => { setIsMobile(window.innerWidth < 800); if(canvasRef.current && canvasRef.current.parentElement) { canvasRef.current.width = canvasRef.current.parentElement.clientWidth; canvasRef.current.height = canvasRef.current.parentElement.clientHeight; if (currentStrokes.length > 0) redrawStrokes(currentStrokes); } }; window.addEventListener('resize', handleResize); const handleFsChange = () => { if (!document.fullscreenElement && isDrawingMode) { setTimeout(handleResize, 100); } }; document.addEventListener('fullscreenchange', handleFsChange); return () => { window.removeEventListener('resize', handleResize); document.removeEventListener('fullscreenchange', handleFsChange); } }, [isDrawingMode, currentStrokes]);
+const startDrawing = (e: React.MouseEvent | React.TouchEvent) => { 
+    e.preventDefault(); e.stopPropagation(); 
+    if (!isDrawingMode || !canvasRef.current) return; 
+    
+    const ctx = canvasRef.current.getContext('2d'); 
+    if (!ctx) return; 
+    
+    const { x, y } = getPointerPos(e);
+    
+    if (drawTool === 'ANGLE') {
+        const newPoints = [...tempPoints, {x, y}];
+        if (newPoints.length < 3) {
+            setTempPoints(newPoints);
+            ctx.fillStyle = drawColor; ctx.beginPath(); ctx.arc(x, y, 5, 0, 2*Math.PI); ctx.fill();
+        } else {
+            const newStroke = { tool: 'ANGLE', color: drawColor, width: drawWidth, points: newPoints };
+            setCurrentStrokes(prev => [...prev, newStroke]);
+            setTempPoints([]);
+            redrawStrokes([...currentStrokes, newStroke]);
+        }
+        return;
+    }
 
-  function exportarBackup() { const backupData = { version: "29.0", date: new Date().toISOString(), eventos, athletes, metadataMap, playlist }; const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `SMAARTPRO_BACKUP_${new Date().toLocaleDateString().replace(/\//g,'-')}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+    setIsDrawing(true); 
+    setTempPoints([{x, y}]); 
+    
+    ctx.beginPath(); 
+    ctx.moveTo(x, y); 
+    ctx.strokeStyle = drawColor; 
+    ctx.lineWidth = drawWidth; 
+    ctx.lineCap = 'round'; 
+    ctx.lineJoin = 'round';
+    
+    if (drawTool === 'ARROW') { 
+        setStartPos({x, y}); 
+        setSnapshot(ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)); 
+    } 
+};
+
+const draw = (e: React.MouseEvent | React.TouchEvent) => { 
+    e.preventDefault(); e.stopPropagation(); 
+    if (!isDrawing || !canvasRef.current) return; 
+    
+    const ctx = canvasRef.current.getContext('2d'); 
+    if (!ctx) return; 
+    
+    const { x, y } = getPointerPos(e);
+
+    if (drawTool === 'PEN') { 
+        ctx.lineTo(x, y); 
+        ctx.stroke(); 
+        setTempPoints(prev => [...prev, {x, y}]); 
+    } else if (drawTool === 'ARROW' && startPos) { 
+        if (snapshot) ctx.putImageData(snapshot, 0, 0); 
+        drawArrow(ctx, startPos.x, startPos.y, x, y, drawColor, drawWidth); 
+    } 
+};
+
+const stopDrawing = (e: any) => { 
+    e.preventDefault(); 
+    if (!isDrawing || !canvasRef.current) return; 
+    
+    setIsDrawing(false); 
+    
+    // Para finalizar, precisamos da última posição válida. 
+    // Se for mouseleave, usamos a última registrada. Se for mouseup, pegamos do evento.
+    let finalX = 0, finalY = 0;
+    if (e.type === 'mouseup' || e.type === 'touchend') {
+        // Em touchend não tem clientX, então usamos o último ponto do array
+         if (tempPoints.length > 0) {
+             finalX = tempPoints[tempPoints.length-1].x;
+             finalY = tempPoints[tempPoints.length-1].y;
+         }
+    } else {
+        const pos = getPointerPos(e);
+        finalX = pos.x;
+        finalY = pos.y;
+    }
+
+    if (drawTool === 'PEN') { 
+        setCurrentStrokes(prev => [...prev, { tool: 'PEN', color: drawColor, width: drawWidth, points: tempPoints }]); 
+    } else if (drawTool === 'ARROW' && startPos) { 
+        // O último ponto do array tempPoints não é usado na seta, usamos o startPos e o final
+        // Como o drawArrow atualiza visualmente, aqui salvamos a lógica
+        const arrowEndPos = getPointerPos(e.type.includes('touch') ? e.changedTouches[0] : e);
+        setCurrentStrokes(prev => [...prev, { tool: 'ARROW', color: drawColor, width: drawWidth, points: [{x: startPos.x, y: startPos.y}, arrowEndPos] }]); 
+    } 
+    
+    setSnapshot(null); 
+    setStartPos(null); 
+    setTempPoints([]); 
+};
+
+// Garante que o canvas redimensione se a janela mudar de tamanho
+useEffect(() => { 
+    const handleResize = () => { 
+        setIsMobile(window.innerWidth < 800); 
+        if(isDrawingMode && canvasRef.current && canvasRef.current.parentElement) { 
+            canvasRef.current.width = canvasRef.current.parentElement.clientWidth; 
+            canvasRef.current.height = canvasRef.current.parentElement.clientHeight; 
+            if (currentStrokes.length > 0) redrawStrokes(currentStrokes); 
+        } 
+    }; 
+    window.addEventListener('resize', handleResize); 
+    
+    // Listener extra para fullscreen change
+    const handleFsChange = () => {
+        setTimeout(handleResize, 200); // Espera a animação do browser
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    
+    return () => { 
+        window.removeEventListener('resize', handleResize); 
+        document.removeEventListener('fullscreenchange', handleFsChange);
+    } 
+}, [isDrawingMode, currentStrokes]);
+
+// --- FIM DO BLOCO DE CORREÇÃO DE DESENHO ---
+  function exportarBackup() { const backupData = { version: "BETA 3.0", date: new Date().toISOString(), eventos, athletes, metadataMap, playlist }; const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `SMAARTPRO_BACKUP_${new Date().toLocaleDateString().replace(/\//g,'-')}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
   function importarBackup(e: any) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const data = JSON.parse(event.target?.result as string); if (data.eventos) setEventos(data.eventos); if (data.athletes) setAthletes(data.athletes); if (data.metadataMap) setMetadataMap(data.metadataMap); if (data.playlist) setPlaylist(data.playlist); alert("Backup restaurado com sucesso!"); } catch (err) { alert("Erro ao ler arquivo de backup."); } }; reader.readAsText(file); }
   function baixarCSV() { const headers = ["ID", "Video", "Tempo(s)", "Tempo(Fmt)", "Categoria", "Tipo/Posicao", "Detalhe/Tecnica", "Resultado", "Atleta", "Lado", "Direcao", "X", "Y"]; const rows = filteredEventos.map((e: any) => [ e.id, e.videoId, e.tempo.toFixed(2), formatTimeVideo(e.tempo), e.categoria, e.tipo, e.especifico, e.resultado, e.atleta, e.lado, e.direcao || '', e.coordenadas ? e.coordenadas.x.toFixed(0) : '', e.coordenadas ? e.coordenadas.y.toFixed(0) : '' ]); const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map((r:any) => r.join(','))].join('\n'); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", `analise_judo_${new Date().getTime()}.csv`); document.body.appendChild(link); link.click(); }
   function imprimirRelatorio() { const doc = new jsPDF(); doc.setFillColor(59, 130, 246); doc.rect(0, 0, 210, 40, 'F'); doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text("SMAART PRO ANALYTICS", 14, 20); doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.text("RELATÓRIO TÉCNICO DE PERFORMANCE - JUDÔ", 14, 28); doc.setFontSize(8); doc.text(`Gerado em: ${new Date().toLocaleDateString()} às ${new Date().toLocaleTimeString()}`, 14, 35); doc.setTextColor(0, 0, 0); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text("RESUMO DO COMBATE", 14, 50); doc.setFontSize(10); doc.setFont('helvetica', 'normal'); const infoY = 58; doc.text(`Evento: ${currentMetadata.eventName || 'Treino/Não listado'}`, 14, infoY); doc.text(`Categoria: ${currentMetadata.category || '-'}`, 14, infoY + 5); doc.text(`Fase: ${currentMetadata.phase || '-'}`, 14, infoY + 10); const scoreY = 55; const col1 = 90; const col2 = 150; doc.setFont('helvetica', 'bold'); doc.text("BRANCO", col1, scoreY); doc.setFont('helvetica', 'normal'); doc.text(labelWhite, col1, scoreY + 5); doc.setFontSize(14); doc.text(`I:${placar.branco.ippon}  W:${placar.branco.waza}  S:${placar.branco.shido}`, col1, scoreY + 12); doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(59, 130, 246); doc.text("AZUL", col2, scoreY); doc.setFont('helvetica', 'normal'); doc.text(labelBlue, col2, scoreY + 5); doc.setFontSize(14); doc.text(`I:${placar.azul.ippon}  W:${placar.azul.waza}  S:${placar.azul.shido}`, col2, scoreY + 12); doc.setTextColor(0, 0, 0); doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text("ESTATÍSTICAS COMPARATIVAS (NAGE-WAZA)", 14, 85); let statY = 95; if (stats.groupData.length === 0) { doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text("Nenhum ataque registrado.", 14, statY); statY += 10; } else { stats.groupData.forEach((st: any) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(50, 50, 50); doc.text(st.name || "GERAL", 14, statY); doc.setFillColor(240, 240, 240); doc.roundedRect(50, statY - 3, 100, 4, 1, 1, 'F'); if (st.branco > 0) { doc.setFillColor(150, 150, 150); const w = (st.branco / st.total) * 100; doc.rect(50, statY - 3, w, 4, 'F'); } if (st.azul > 0) { doc.setFillColor(59, 130, 246); const w = (st.azul / st.total) * 100; const startX = 50 + ((st.branco / st.total) * 100); doc.rect(startX, statY - 3, w, 4, 'F'); } doc.setFont('helvetica', 'normal'); doc.text(`${st.total} (B:${st.branco} / A:${st.azul})`, 155, statY); statY += 8; }); } const tableRows = filteredEventos.sort((a:any, b:any) => a.tempo - b.tempo).map((ev: any) => [ formatTimeVideo(ev.tempo), ev.atleta === 'BRANCO' ? labelWhite : (ev.atleta === 'AZUL' ? labelBlue : '-'), ev.categoria, ev.especifico || ev.tipo, ev.resultado || '-', ev.lado || '-' ]); autoTable(doc, { startY: Math.max(statY + 10, 120), head: [['Tempo', 'Atleta', 'Categoria', 'Detalhe / Técnica', 'Resultado', 'Lado']], body: tableRows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] }, styles: { fontSize: 8, cellPadding: 2 }, columnStyles: { 0: { cellWidth: 15 }, 3: { cellWidth: 'auto' } } }); const pageHeight = doc.internal.pageSize.height; doc.setFillColor(240, 240, 240); doc.rect(0, pageHeight - 20, 210, 20, 'F'); doc.setTextColor(100, 100, 100); doc.setFontSize(8); doc.text("Relatório gerado pelo software SMAART PRO - Desenvolvido para Alta Performance.", 14, pageHeight - 12); doc.text("Supervisão: Luiz Pavani - Diretor Educacional", 14, pageHeight - 8); doc.save(`Analise_Judo_${currentMetadata.eventName.replace(/ /g,'_')}.pdf`); }
@@ -637,7 +835,7 @@ export default function JudoPlayer() {
         <h1 style={{ margin: 0, fontSize: isMobile?'24px':'32px', fontWeight: '800', letterSpacing: '-1px', display: 'flex', alignItems: 'center' }}>
           <div style={{background: THEME.primaryGradient, padding:'8px', borderRadius:'12px', marginRight:'12px', boxShadow:`0 0 20px ${THEME.primary}44`}}><Video size={24} color="white"/></div>
           <div><span style={{ color: 'white' }}>SMAART</span><span style={{ color: THEME.primary }}>PRO</span><div style={{fontSize:'10px', color: THEME.textDim, fontWeight:'400', letterSpacing:'2px', marginTop:'-4px'}}>ELITE JUDO ANALYTICS</div></div>
-          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>v29.0</span>
+          <span style={{ fontSize: '10px', color: THEME.text, marginLeft: '12px', background: THEME.cardBorder, padding: '4px 8px', borderRadius: '20px', border:`1px solid rgba(255,255,255,0.1)` }}>BETA 3.0</span>
         </h1>
         
         <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
